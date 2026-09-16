@@ -1,0 +1,36 @@
+<Slide style={{ width:'1280px', height:'720px', background:'#FFFFFF', padding:'24px 64px 40px', display:'flex', flexDirection:'column' }}>
+  <Box style={{ display:'flex', alignItems:'center', gap:14, height:64 }}>
+    <Box style={{ width:8, height:34, background:'#FF6B35', borderRadius:4 }} />
+    <Text style={{ fontSize:30, fontWeight:'bold', color:'#1B1F3B', fontFamily:'PingFang SC' }}>工程落地、运行验证与安全可审计</Text>
+  </Box>
+  <Box style={{ display:'flex', gap:16, marginTop:6 }}>
+    {[
+      { ic:'chart-line', t:'可观测', sub:'Trace / Log / Metrics', items:[['Trace JSONL 逐步回放','已实现'],['结构化日志按 TraceId 关联','已实现'],['指标复用预算模块 → Grafana','已实现']] },
+      { ic:'shield-alt', t:'安全治理', sub:'权限 / 凭证 / 门禁', items:[['权限矩阵按角色分级','已实现'],['Higress 凭证隔离','已实现'],['human gate 高风险拦截','已实现'],['worktree 回滚 / 预算硬上限','已实现']] },
+      { ic:'clipboard-check', t:'运行验证', sub:'可复现实证（命中红线③）', items:[['自举回归集（真实 bug commit）','新建'],['端到端 Demo 路径','新建'],['Badcase 抓 False-Done','新建'],['证据物清单 Receipt/Trace','新建']] },
+    ].map((col, i) => (
+      <Box key={i} style={{ width:368, background:'#F5F7FB', borderRadius:12, overflow:'hidden', display:'flex', flexDirection:'column' }}>
+        <Box style={{ background:'#1B1F3B', padding:'14px 18px', display:'flex', alignItems:'center', gap:12 }}>
+          <FAIcon name={col.ic} style={{ fill:'#FF6B35', width:24, height:24 }} />
+          <Box>
+            <Text style={{ fontSize:18, fontWeight:'bold', color:'#FFFFFF', fontFamily:'PingFang SC' }}>{col.t}</Text>
+            <Text style={{ fontSize:12.5, color:'#9AA1B8', fontFamily:'PingFang SC' }}>{col.sub}</Text>
+          </Box>
+        </Box>
+        <Box style={{ padding:'14px 18px', display:'flex', flexDirection:'column', gap:11 }}>
+          {col.items.map((it, j) => (
+            <Box key={j} style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <Box style={{ width:7, height:7, borderRadius:4, background:'#FF6B35' }} />
+              <Text style={{ fontSize:14, color:'#1B1F3B', flex:1, fontFamily:'PingFang SC' }}>{it[0]}</Text>
+              <Text style={{ fontSize:11.5, color: it[1]==='已实现' ? '#2A8A5B' : '#FF6B35', fontWeight:'bold', fontFamily:'Inter' }}>[{it[1]}]</Text>
+            </Box>
+          ))}
+        </Box>
+      </Box>
+    ))}
+  </Box>
+  <Box style={{ background:'#FFEDE4', borderRadius:12, padding:'16px 22px', marginTop:16, display:'flex', alignItems:'center', gap:18 }}>
+    <Text style={{ fontSize:34, fontWeight:'bold', color:'#FF6B35', fontFamily:'Inter' }}>False-Done Rate</Text>
+    <Text style={{ fontSize:16, color:'#5A3320', lineHeight:1.5, fontFamily:'PingFang SC' }}>招牌指标——<Text style={{ fontWeight:'bold' }}>误报完成率</Text>：Agent 声称完成但 Verifier 判定未通过的比例，直接量化“自报告不可信”这一核心命题。</Text>
+  </Box>
+</Slide>

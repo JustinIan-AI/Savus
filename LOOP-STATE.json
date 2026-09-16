@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "workspace_root": "/Users/freecisco_yan/Documents/trae_projects/savus",
+  "workspace_type": "project",
+  "project_name": null,
+  "intent": "Test E2E Task",
+  "context": {
+    "user": {},
+    "project": {},
+    "task": {}
+  },
+  "status": "active",
+  "tags": [
+    "in_progress"
+  ],
+  "selected_template": "issue-fix",
+  "run_log": [],
+  "approvals": [],
+  "cost_observatory": {
+    "budget_cap_usd": 0.0,
+    "spend_usd": 0.0,
+    "request_count": 0,
+    "last_event_at": null,
+    "status": "ok"
+  },
+  "safety": {
+    "kill_switch_enabled": false,
+    "denylist": [],
+    "retained_worktrees": []
+  },
+  "current_work_id": "task-1aa1af6b",
+  "current_work_source": "loop",
+  "current_work_summary": "Untitled Task",
+  "tasks": [
+    {
+      "id": "task-1aa1af6b",
+      "created_at": "2026-09-16T10:18:17Z",
+      "title": "Untitled Task",
+      "template": "issue-fix",
+      "status": "active",
+      "phase": "maker",
+      "gate_status": "passed",
+      "updated_at": "2026-09-16T10:18:17Z"
+    }
+  ],
+  "override_history": [],
+  "active_loop_id": null,
+  "context_pack_schema": {
+    "include": [
+      "user",
+      "project",
+      "task",
+      "intent",
+      "recent_run_log"
+    ],
+    "compact_strategy": "ordered_then_summary",
+    "max_user_chars": 400,
+    "max_project_chars": 1200,
+    "max_task_chars": 800
+  },
+  "planner_output": {
+    "goal_id": "",
+    "intent": "",
+    "dag_enforced": false,
+    "next_task_id": null
+  },
+  "human_profile": {
+    "preferences": {},
+    "coding_style": {},
+    "architecture_preference": {},
+    "decision_pattern": {},
+    "review_standard": {}
+  },
+  "loop_engine": null,
+  "task_graph": [],
+  "learning_loops": [],
+  "created_at": "2026-07-08T07:01:36Z",
+  "updated_at": "2026-09-16T10:18:17Z"
+}

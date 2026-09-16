@@ -1,0 +1,28 @@
+<Slide style={{ width:'1280px', height:'720px', background:'#FFFFFF', padding:'24px 64px 40px', display:'flex', flexDirection:'column' }}>
+  <Box style={{ display:'flex', alignItems:'center', gap:14, height:64 }}>
+    <Box style={{ width:8, height:34, background:'#FF6B35', borderRadius:4 }} />
+    <Text style={{ fontSize:30, fontWeight:'bold', color:'#1B1F3B', fontFamily:'PingFang SC' }}>目录</Text>
+    <Text style={{ fontSize:15, color:'#9AA1B8', fontFamily:'Inter', marginLeft:8 }}>Contents · 八章</Text>
+  </Box>
+  <Box style={{ display:'flex', flexWrap:'wrap', gap:18, marginTop:18 }}>
+    {[
+      { n:'01', t:'场景与价值', d:'选题来源与核心洞察：AI 交付是“自报告”的', w:'25%' },
+      { n:'02', t:'方案总览', d:'分层架构与关键技术选型必要性', w:'' },
+      { n:'03', t:'多 Agent 协同设计', d:'4 职能 Agent + 1 人类，独立验证闭环', w:'25%' },
+      { n:'04', t:'Skill 工程体系', d:'三层 Skill 体系与 7 个新建核心 Skill', w:'' },
+      { n:'05', t:'工程落地 · 安全可审计', d:'可观测 / 安全治理 / 运行验证证据', w:'25%' },
+      { n:'06', t:'开放 / 开源计划', d:'开源范围、依赖披露与迁移成本', w:'' },
+      { n:'07', t:'落地计划与进展', d:'当前进展、复赛里程碑 M1–M4 与风险', w:'25%' },
+      { n:'08', t:'团队介绍', d:'参赛团队与分工', w:'' },
+    ].map((c, i) => (
+      <Box key={i} style={{ width: i%2===0?560:560, height:118, background:'#F5F7FB', borderRadius:12, padding:'18px 24px', display:'flex', alignItems:'center', gap:20 }}>
+        <Text style={{ fontSize:42, fontWeight:'bold', color:'#FF6B35', fontFamily:'Inter', width:64 }}>{c.n}</Text>
+        <Box style={{ width:1, height:54, background:'#E2E6EF' }} />
+        <Box style={{ flex:1 }}>
+          <Text style={{ fontSize:21, fontWeight:'bold', color:'#1B1F3B', fontFamily:'PingFang SC' }}>{c.t}{c.w && <Text style={{ fontSize:14, color:'#FF6B35', fontFamily:'Inter' }}>　{c.w}</Text>}</Text>
+          <Text style={{ fontSize:15, color:'#6B7280', marginTop:6, fontFamily:'PingFang SC' }}>{c.d}</Text>
+        </Box>
+      </Box>
+    ))}
+  </Box>
+</Slide>

@@ -1,0 +1,38 @@
+<Slide style={{ width:'1280px', height:'720px', background:'#FFFFFF', padding:'24px 64px 40px', display:'flex', flexDirection:'column' }}>
+  <Box style={{ display:'flex', alignItems:'center', gap:14, height:64 }}>
+    <Box style={{ width:8, height:34, background:'#FF6B35', borderRadius:4 }} />
+    <Text style={{ fontSize:30, fontWeight:'bold', color:'#1B1F3B', fontFamily:'PingFang SC' }}>Skill 工程体系：三层来源 + 7 个新建核心</Text>
+  </Box>
+  <Box style={{ display:'flex', gap:16, marginTop:6 }}>
+    {[
+      { t:'A · 阿里云官方用云 Skills', d:'按需选用 · 零适配加载 · skills.aliyun.com 收录', bg:'#E9EEFB', tag:'评分项点名' },
+      { t:'B · LoopDesk 已有 Skill', d:'62 个 bundled，其中 14 个研发可直接复用（git/5 语言探针/skill-creator…）', bg:'#E9EEFB', tag:'已在代码运行' },
+      { t:'C · 本方案新建核心 Skill', d:'7 个：独立验证闭环最小能力集，补齐 AgentTeams 运行时可靠性', bg:'#FFF4EE', tag:'7 个新建', hl:true },
+    ].map((c, i) => (
+      <Box key={i} style={{ flex:1, background:c.bg, border: c.hl ? '2px solid #FF6B35' : '2px solid #D7DEEC', borderRadius:12, padding:'16px 18px', height:150, display:'flex', flexDirection:'column' }}>
+        <Text style={{ fontSize:18, fontWeight:'bold', color:'#1B1F3B', fontFamily:'PingFang SC' }}>{c.t}</Text>
+        <Text style={{ fontSize:14, color:'#4A5168', lineHeight:1.55, marginTop:8, fontFamily:'PingFang SC' }}>{c.d}</Text>
+        <Box style={{ marginTop:'auto', alignSelf:'flex-start', background: c.hl ? '#FF6B35' : '#2A2F5B', borderRadius:6, padding:'4px 10px' }}>
+          <Text style={{ fontSize:12.5, color:'#FFFFFF', fontFamily:'PingFang SC' }}>{c.tag}</Text>
+        </Box>
+      </Box>
+    ))}
+  </Box>
+  <Text style={{ fontSize:15, fontWeight:'bold', color:'#FF6B35', marginTop:18, fontFamily:'PingFang SC' }}>7 个新建 Skill（附录 B 格式 · 覆盖八步闭环 2/3/5/6/7/8 步）</Text>
+  <Box style={{ display:'flex', flexWrap:'wrap', gap:12, marginTop:10 }}>
+    {[
+      { n:'TaskDecompose', r:'任务拆解与契约生成' },
+      { n:'ClaimAndLease', r:'任务租约与并行隔离' },
+      { n:'RepairTask', r:'缺陷修复执行' },
+      { n:'IndependentVerify ★', r:'独立验证（核心）' },
+      { n:'EvidenceDeposit', r:'证据沉淀与打包' },
+      { n:'HumanGate', r:'人工审批门禁' },
+      { n:'ExperienceDistill', r:'经验蒸馏' },
+    ].map((s, i) => (
+      <Box key={i} style={{ width:268, height:74, background:'#F5F7FB', borderLeft:'4px solid #FF6B35', borderRadius:'0 10px 10px 0', padding:'12px 16px', display:'flex', flexDirection:'column', justifyContent:'center' }}>
+        <Text style={{ fontSize:15.5, fontWeight:'bold', color:'#1B1F3B', fontFamily:'Inter' }}>{s.n}</Text>
+        <Text style={{ fontSize:13, color:'#6B7280', marginTop:3, fontFamily:'PingFang SC' }}>{s.r}</Text>
+      </Box>
+    ))}
+  </Box>
+</Slide>

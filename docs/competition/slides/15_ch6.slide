@@ -1,0 +1,44 @@
+<Slide style={{ width:'1280px', height:'720px', background:'#FFFFFF', padding:'24px 64px 40px', display:'flex', flexDirection:'column' }}>
+  <Box style={{ display:'flex', alignItems:'center', gap:14, height:64 }}>
+    <Box style={{ width:8, height:34, background:'#FF6B35', borderRadius:4 }} />
+    <Text style={{ fontSize:30, fontWeight:'bold', color:'#1B1F3B', fontFamily:'PingFang SC' }}>开放 / 开源计划</Text>
+  </Box>
+  <Box style={{ display:'flex', gap:18, marginTop:6 }}>
+    <Box style={{ width:700, display:'flex', flexDirection:'column', gap:16 }}>
+      <Box style={{ background:'#F5F7FB', borderRadius:12, padding:'18px 22px', borderLeft:'5px solid #FF6B35' }}>
+        <Text style={{ fontSize:19, fontWeight:'bold', color:'#1B1F3B', fontFamily:'PingFang SC' }}>开源范围与协议</Text>
+        <Box style={{ display:'flex', flexDirection:'column', gap:10, marginTop:12 }}>
+          <Text style={{ fontSize:15.5, color:'#4A5168', lineHeight:1.6, fontFamily:'PingFang SC' }}>· <Text style={{ fontWeight:'bold', color:'#1B1F3B' }}>LoopDesk 本体</Text> Apache-2.0，已发布 v0.3.1，复赛前持续维护。</Text>
+          <Text style={{ fontSize:15.5, color:'#4A5168', lineHeight:1.6, fontFamily:'PingFang SC' }}>· <Text style={{ fontWeight:'bold', color:'#1B1F3B' }}>本次新增全部开放</Text>：Runtime 适配层 / Receipt Schema / 7 个 Skill / 自举回归集 → 全部 Apache-2.0。</Text>
+          <Text style={{ fontSize:15.5, color:'#4A5168', lineHeight:1.6, fontFamily:'PingFang SC' }}>· <Text style={{ fontWeight:'bold', color:'#1B1F3B' }}>生态贡献</Text>：Receipt Schema 与 Skill 设计为跨团队复用，任意 AgentTeams 团队可 import 直接采用。</Text>
+        </Box>
+      </Box>
+      <Box style={{ background:'#F5F7FB', borderRadius:12, padding:'18px 22px', borderLeft:'5px solid #2A2F5B' }}>
+        <Text style={{ fontSize:19, fontWeight:'bold', color:'#1B1F3B', fontFamily:'PingFang SC' }}>第三方依赖披露（满足 9.4 强制项）</Text>
+        <Box style={{ display:'flex', flexDirection:'column', gap:10, marginTop:12 }}>
+          <Text style={{ fontSize:15.5, color:'#4A5168', lineHeight:1.6, fontFamily:'PingFang SC' }}>· 开源依赖：见 uv.lock / pyproject.toml，复赛提交完整清单。</Text>
+          <Text style={{ fontSize:15.5, color:'#4A5168', lineHeight:1.6, fontFamily:'PingFang SC' }}>· 商业 API：披露调用环节、费用假设、可替代性与锁定风险。</Text>
+          <Text style={{ fontSize:15.5, color:'#4A5168', lineHeight:1.6, fontFamily:'PingFang SC' }}>· MCP 接口与外部权限：逐 server 列出权限范围与失败重试/幂等策略。</Text>
+        </Box>
+      </Box>
+    </Box>
+    <Box style={{ width:404, background:'#1B1F3B', borderRadius:12, padding:'20px 22px', display:'flex', flexDirection:'column' }}>
+      <Text style={{ fontSize:19, fontWeight:'bold', color:'#FFFFFF', fontFamily:'PingFang SC' }}>迁移与替换成本</Text>
+      <Text style={{ fontSize:13, color:'#9AA1B8', marginTop:4, fontFamily:'PingFang SC' }}>满足“后续迁移成本”要求</Text>
+      <Box style={{ width:48, height:4, background:'#FF6B35', borderRadius:2, margin:'12px 0 14px' }} />
+      {[
+        { a:'SQLite + 本地向量', b:'PolarDB-for-PostgreSQL', c:'低' },
+        { a:'自研 Trace JSONL', b:'LoongSuite / AgentLoop', c:'低' },
+        { a:'MCP（已双向）', b:'任意等价工具', c:'零改造' },
+      ].map((r, i) => (
+        <Box key={i} style={{ padding:'11px 0', borderTop: i===0 ? 'none' : '1px solid #2E3358' }}>
+          <Text style={{ fontSize:13.5, color:'#9AA1B8', fontFamily:'PingFang SC' }}>{r.a} →</Text>
+          <Box style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginTop:3 }}>
+            <Text style={{ fontSize:15, color:'#FFFFFF', fontWeight:'bold', fontFamily:'PingFang SC' }}>{r.b}</Text>
+            <Box style={{ background:'#FF6B35', borderRadius:5, padding:'2px 9px' }}><Text style={{ fontSize:12.5, color:'#FFFFFF', fontWeight:'bold', fontFamily:'PingFang SC' }}>{r.c}</Text></Box>
+          </Box>
+        </Box>
+      ))}
+    </Box>
+  </Box>
+</Slide>

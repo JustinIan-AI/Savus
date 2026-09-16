@@ -1,0 +1,30 @@
+<Slide style={{ width:'1280px', height:'720px', background:'#FFFFFF', padding:'24px 64px 40px', display:'flex', flexDirection:'column' }}>
+  <Box style={{ display:'flex', alignItems:'center', gap:14, height:64 }}>
+    <Box style={{ width:8, height:34, background:'#FF6B35', borderRadius:4 }} />
+    <Text style={{ fontSize:30, fontWeight:'bold', color:'#1B1F3B', fontFamily:'PingFang SC' }}>核心洞察：AI 交付是“自报告”的</Text>
+  </Box>
+  <Box style={{ background:'#FFEDE4', borderRadius:12, padding:'16px 22px', display:'flex', alignItems:'center', gap:16, marginTop:8 }}>
+    <FAIcon name='comment-dots' style={{ fill:'#FF6B35', width:30, height:30 }} />
+    <Text style={{ fontSize:17, color:'#5A3320', lineHeight:1.5, fontFamily:'PingFang SC' }}>AgentTeams 官方示例：<Text style={{ fontWeight:'bold' }}>Alice: “Done. PR submitted”</Text> —— 但<Text style={{ fontWeight:'bold', color:'#FF6B35' }}>没有任何机制能发现 Worker 错误地认为自己成功了</Text>。这是组织设计问题，不是模型能力问题。</Text>
+  </Box>
+  <Box style={{ display:'flex', gap:12, marginTop:18 }}>
+    {[
+      { n:'1', t:'自报告交付', b:'Agent 的“完成”是自然语言断言，不可机器校验', s:'闭环·5 结果验证' },
+      { n:'2', t:'验证与执行同源', b:'让写代码的 Agent 判断自己写得对不对，等于考生批自己卷', s:'闭环·5 结果验证', hot:true },
+      { n:'3', t:'并行冲突', b:'多 Agent 改同一仓库，缺隔离与租约，互相覆盖', s:'闭环·3 上下文传递' },
+      { n:'4', t:'证据断链', b:'事后要回滚，查不到改了什么、依据什么决策', s:'闭环·6/7 证据/回滚' },
+      { n:'5', t:'经验不沉淀', b:'每任务从零开始，上次的坑下次照踩', s:'闭环·8 经验沉淀' },
+    ].map((c, i) => (
+      <Box key={i} style={{ width:218, background: c.hot ? '#FFF4EE' : '#F5F7FB', borderTop: c.hot ? '4px solid #FF6B35' : '4px solid #2A2F5B', borderRadius:'0 0 12px 12px', padding:'16px 16px 18px', display:'flex', flexDirection:'column', height:316 }}>
+        <Box style={{ width:40, height:40, borderRadius:20, background:'#FF6B35', justifyContent:'center', alignItems:'center' }}>
+          <Text style={{ fontSize:20, fontWeight:'bold', color:'#FFFFFF', fontFamily:'Inter' }}>{c.n}</Text>
+        </Box>
+        <Text style={{ fontSize:19, fontWeight:'bold', color:'#1B1F3B', marginTop:12, fontFamily:'PingFang SC' }}>{c.t}</Text>
+        <Text style={{ fontSize:14.5, color:'#4A5168', lineHeight:1.55, marginTop:8, fontFamily:'PingFang SC' }}>{c.b}</Text>
+        <Box style={{ marginTop:'auto', background: c.hot ? '#FFE3D3' : '#E9EEFB', borderRadius:6, padding:'5px 8px' }}>
+          <Text style={{ fontSize:12.5, color:'#2A2F5B', fontFamily:'Inter' }}>{c.s}</Text>
+        </Box>
+      </Box>
+    ))}
+  </Box>
+</Slide>

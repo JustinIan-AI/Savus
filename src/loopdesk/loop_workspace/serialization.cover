@@ -1,0 +1,20 @@
+    1: """Serialization helpers for loop workspace state."""
+       
+    1: from __future__ import annotations
+       
+    1: import json
+    1: from pathlib import Path
+       
+    1: from loopdesk.loop_workspace.schema import LoopWorkspaceState
+       
+       
+    1: def load_loop_state(path: Path) -> LoopWorkspaceState:
+           payload = json.loads(path.read_text(encoding="utf-8"))
+           return LoopWorkspaceState.model_validate(payload)
+       
+       
+    1: def dump_loop_state(path: Path, state: LoopWorkspaceState) -> None:
+           path.write_text(
+               json.dumps(state.model_dump(mode="json"), ensure_ascii=False, indent=2) + "\n",
+               encoding="utf-8",
+           )

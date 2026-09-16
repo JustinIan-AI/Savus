@@ -1,0 +1,9 @@
+<Slide style={{ width:'1280px', height:'720px', background:'#1B1F3B', padding:'0', position:'relative', display:'flex', flexDirection:'column', justifyContent:'center', paddingLeft:110, overflow:'hidden' }}>
+  <Box style={{ position:'absolute', right:0, top:0, width:320, height:320, background:'linear-gradient(135deg,#FF6B35 0%, transparent 100%)', opacity:0.14 }} />
+  <Text style={{ position:'absolute', top:70, left:90, fontSize:240, fontWeight:'bold', color:'#2A2F5B', fontFamily:'Inter', lineHeight:1, zIndex:0 }}>02</Text>
+  <Box style={{ position:'relative', zIndex:1 }}>
+    <Box style={{ width:80, height:6, background:'#FF6B35', borderRadius:3, marginBottom:22 }} />
+    <Text style={{ fontSize:48, fontWeight:'bold', color:'#FFFFFF', fontFamily:'PingFang SC' }}>方案总览</Text>
+    <Text style={{ fontSize:19, color:'#9AA1B8', marginTop:14, fontFamily:'Inter', letterSpacing:3 }}>SOLUTION OVERVIEW</Text>
+  </Box>
+</Slide>

@@ -1,0 +1,42 @@
+<Slide style={{ width:'1280px', height:'720px', background:'#FFFFFF', padding:'24px 64px 40px', display:'flex', flexDirection:'column' }}>
+  <Box style={{ display:'flex', alignItems:'center', gap:14, height:64 }}>
+    <Box style={{ width:8, height:34, background:'#FF6B35', borderRadius:4 }} />
+    <Text style={{ fontSize:30, fontWeight:'bold', color:'#1B1F3B', fontFamily:'PingFang SC' }}>4 职能 Agent + 1 人类：覆盖八步闭环</Text>
+  </Box>
+  <Box style={{ display:'flex', alignItems:'stretch', gap:6, marginTop:6 }}>
+    {[
+      { ic:'project-diagram', n:'loopdesk-planner', r:'拆解与重规划', c:'#2A2F5B' },
+      { ic:'code', n:'loopdesk-executor', r:'隔离 worktree 修复', c:'#2A2F5B' },
+      { ic:'shield-alt', n:'loopdesk-verifier ★', r:'独立验证 · 只读', c:'#FF6B35' },
+      { ic:'seedling', n:'loopdesk-curator', r:'经验蒸馏为新 Skill', c:'#2A2F5B' },
+    ].map((a, i) => (
+      <Box key={i} style={{ flex:1, background: a.c==='#FF6B35' ? '#FFF4EE' : '#F5F7FB', border: a.c==='#FF6B35' ? '2px solid #FF6B35' : '2px solid #E2E6EF', borderRadius:12, padding:'16px 14px', display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center' }}>
+        <Box style={{ width:48, height:48, borderRadius:12, background: a.c==='#FF6B35' ? '#FF6B35' : '#2A2F5B', justifyContent:'center', alignItems:'center' }}>
+          <FAIcon name={a.ic} style={{ fill:'#FFFFFF', width:24, height:24 }} />
+        </Box>
+        <Text style={{ fontSize:15.5, fontWeight:'bold', color:'#1B1F3B', marginTop:10, fontFamily:'Inter' }}>{a.n}</Text>
+        <Text style={{ fontSize:13.5, color:'#4A5168', marginTop:4, fontFamily:'PingFang SC' }}>{a.r}</Text>
+      </Box>
+    ))}
+  </Box>
+  <Box style={{ display:'flex', justifyContent:'center', marginTop:14 }}>
+    <Box style={{ background:'#1B1F3B', borderRadius:10, padding:'12px 26px', display:'flex', alignItems:'center', gap:14 }}>
+      <FAIcon name='user-shield' style={{ fill:'#FF6B35', width:26, height:26 }} />
+      <Text style={{ fontSize:17, fontWeight:'bold', color:'#FFFFFF', fontFamily:'PingFang SC' }}>loopdesk-approver（AgentTeams Human CRD）· 高风险动作人工审批门禁</Text>
+    </Box>
+  </Box>
+  <Text style={{ fontSize:15, fontWeight:'bold', color:'#FF6B35', marginTop:18, fontFamily:'PingFang SC' }}>Verifier 独立性的三重工程强制（全案技术壁垒）</Text>
+  <Box style={{ display:'flex', gap:16, marginTop:10 }}>
+    {[
+      { ic:'eye-slash', t:'上下文隔离', b:'Verifier 拿任务原始验收标准，看不到 Executor 的自检说明，从源头切断确认偏误。' },
+      { ic:'lock', t:'权限隔离', b:'Verifier 是只读角色，权限矩阵强制，物理上不能改代码来让测试通过。' },
+      { ic:'fingerprint', t:'证据锚定', b:'判定只依据真实命令退出码与产物哈希，不接受任何自然语言断言。' },
+    ].map((x, i) => (
+      <Box key={i} style={{ flex:1, background:'#E9EEFB', borderRadius:12, padding:'16px 18px', height:150, display:'flex', flexDirection:'column' }}>
+        <FAIcon name={x.ic} style={{ fill:'#2A2F5B', width:28, height:28 }} />
+        <Text style={{ fontSize:18, fontWeight:'bold', color:'#1B1F3B', marginTop:10, fontFamily:'PingFang SC' }}>{x.t}</Text>
+        <Text style={{ fontSize:14, color:'#4A5168', lineHeight:1.55, marginTop:6, fontFamily:'PingFang SC' }}>{x.b}</Text>
+      </Box>
+    ))}
+  </Box>
+</Slide>

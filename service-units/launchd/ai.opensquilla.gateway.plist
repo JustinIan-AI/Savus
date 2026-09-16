@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  LoopDesk macOS LaunchAgent — user-scope only.
+
+  Install:
+    1. Substitute ${HOME} with your real $HOME (launchd does NOT expand env
+       vars inside plist values), e.g.
+         envsubst < service-units/launchd/ai.loopdesk.gateway.plist \
+           > ~/Library/LaunchAgents/ai.loopdesk.gateway.plist
+    2. launchctl load ~/Library/LaunchAgents/ai.loopdesk.gateway.plist
+
+  Safety contract — DO NOT REMOVE:
+    LOOPDESK_LISTEN=127.0.0.1 binds the gateway to loopback only. Network
+    exposure is an explicit operator opt-in. To expose the gateway on the
+    network, edit the EnvironmentVariables block below to set
+    LOOPDESK_LISTEN=0.0.0.0 and re-run `launchctl unload` + `launchctl load`.
+    Only run with LOOPDESK_LISTEN=0.0.0.0 behind a trusted reverse proxy or
+    VPN — loopdesk's first-class auth assumes loopback scope by default. The
+    S19 boot WARNING (gateway.bind.public) will fire whenever the agent is
+    configured for wildcard bind.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>ai.loopdesk.gateway</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>loopdesk</string>
+        <string>gateway</string>
+        <string>run</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>LOOPDESK_LISTEN</key>
+        <string>127.0.0.1</string>
+        <key>LOOPDESK_GATEWAY_PORT</key>
+        <string>18790</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>${HOME}/Library/Logs/loopdesk.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>${HOME}/Library/Logs/loopdesk.err.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>

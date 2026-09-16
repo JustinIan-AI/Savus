@@ -1,0 +1,35 @@
+    1: """Git worktree isolation helpers for bounded Goal execution."""
+       
+    1: from __future__ import annotations
+       
+    1: import subprocess
+    1: from pathlib import Path
+    1: from typing import Optional
+       
+    1: from loopdesk.loop_workspace.layout import LoopWorkspaceLayout
+       
+       
+    1: def create_loop_worktree(layout: LoopWorkspaceLayout, worktree_name: str, *, branch: Optional[str] = None) -> Path:
+           target = layout.worktrees_dir / worktree_name
+           branch_name = branch or f"loopdesk/goal/{worktree_name}"
+           if target.exists():
+               subprocess.run(["git", "worktree", "remove", str(target)], cwd=layout.root, check=False, capture_output=True)
+               subprocess.run(["git", "worktree", "prune"], cwd=layout.root, check=False, capture_output=True)
+           branch_exists = bool(subprocess.run(["git", "show-ref", "--verify", "--quiet", f"refs/heads/{branch_name}"], cwd=layout.root, check=False, capture_output=True).returncode == 0)
+           worktree_args = ["git", "worktree", "add"]
+           if branch_exists:
+               worktree_args.extend(["-B", branch_name, "--force", str(target), branch_name])
+           else:
+               worktree_args.extend(["-b", branch_name, "--force", str(target), "main"])
+           subprocess.run(worktree_args, cwd=layout.root, check=True, capture_output=True)
+           return target
+       
+       
+    1: def remove_loop_worktree(layout: LoopWorkspaceLayout, worktree_name: str, *, branch: str | None = None) -> None:
+           target = layout.worktrees_dir / worktree_name
+           branch_name = branch or f"loopdesk/goal/{worktree_name}"
+           subprocess.run(["git", "worktree", "remove", str(target)], cwd=layout.root, check=False, capture_output=True)
+           subprocess.run(["git", "worktree", "prune"], cwd=layout.root, check=False, capture_output=True)
+           subprocess.run(["git", "branch", "-d", branch_name], cwd=layout.root, check=False, capture_output=True)
+           if target.exists():
+               target.rmdir()

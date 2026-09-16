@@ -1,0 +1,29 @@
+<Slide style={{ width:'1280px', height:'720px', background:'#FFFFFF', padding:'24px 64px 40px', display:'flex', flexDirection:'column' }}>
+  <Box style={{ display:'flex', alignItems:'center', gap:14, height:64 }}>
+    <Box style={{ width:8, height:34, background:'#FF6B35', borderRadius:4 }} />
+    <Text style={{ fontSize:30, fontWeight:'bold', color:'#1B1F3B', fontFamily:'PingFang SC' }}>团队介绍</Text>
+    <Text style={{ fontSize:15, color:'#9AA1B8', fontFamily:'PingFang SC', marginLeft:8 }}>（请替换为真实姓名 / 单位 / 分工）</Text>
+  </Box>
+  <Box style={{ display:'flex', gap:18, marginTop:14 }}>
+    {[
+      { r:'项目负责人', d:'整体方案设计、对外叙事与参赛材料' },
+      { r:'研发工程师', d:'LoopDesk 内核、Worker Runtime 适配层' },
+      { r:'验证与质量', d:'独立 Verifier、自举回归集与 Badcase 评测' },
+      { r:'Skill 工程', d:'7 个新 Skill 与 Curator 经验蒸馏流水线' },
+    ].map((m, i) => (
+      <Box key={i} style={{ flex:1, background:'#F5F7FB', borderTop:'4px solid #FF6B35', borderRadius:'0 0 12px 12px', padding:'22px 18px', height:300, display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center' }}>
+        <Box style={{ width:80, height:80, borderRadius:40, background:'#E9EEFB', justifyContent:'center', alignItems:'center' }}>
+          <FAIcon name='user' style={{ fill:'#2A2F5B', width:38, height:38 }} />
+        </Box>
+        <Text style={{ fontSize:20, fontWeight:'bold', color:'#FF6B35', marginTop:16, fontFamily:'PingFang SC' }}>姓名待填</Text>
+        <Text style={{ fontSize:15, fontWeight:'bold', color:'#1B1F3B', marginTop:6, fontFamily:'PingFang SC' }}>{m.r}</Text>
+        <Box style={{ width:36, height:3, background:'#FF6B35', borderRadius:2, margin:'12px 0' }} />
+        <Text style={{ fontSize:14, color:'#4A5168', lineHeight:1.6, fontFamily:'PingFang SC' }}>{m.d}</Text>
+      </Box>
+    ))}
+  </Box>
+  <Box style={{ background:'#FFF4EE', borderRadius:10, padding:'14px 20px', marginTop:18, display:'flex', alignItems:'center', gap:12 }}>
+    <FAIcon name='info-circle' style={{ fill:'#FF6B35', width:22, height:22 }} />
+    <Text style={{ fontSize:14.5, color:'#5A3320', fontFamily:'PingFang SC' }}>本页为占位模板，请替换为真实团队成员、单位与分工；复赛阶段需补充可联系的实体信息与贡献声明。</Text>
+  </Box>
+</Slide>

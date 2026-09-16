@@ -1,0 +1,27 @@
+<Slide style={{ width:'1280px', height:'720px', background:'#FFFFFF', padding:'24px 64px 40px', display:'flex', flexDirection:'column' }}>
+  <Box style={{ display:'flex', alignItems:'center', gap:14, height:64 }}>
+    <Box style={{ width:8, height:34, background:'#FF6B35', borderRadius:4 }} />
+    <Text style={{ fontSize:30, fontWeight:'bold', color:'#1B1F3B', fontFamily:'PingFang SC' }}>一页纸速览</Text>
+    <Text style={{ fontSize:15, color:'#9AA1B8', fontFamily:'Inter', marginLeft:8 }}>P0 · One-Pager</Text>
+  </Box>
+  <Box style={{ display:'flex', flexWrap:'wrap', gap:20, marginTop:18 }}>
+    {[
+      { ic:'bullseye', t:'一句话定位', b:'AgentTeams 的第四种 Worker Runtime，让 AI 研发交付从“自己说完成”变成“被独立验证过”。' },
+      { ic:'exclamation-circle', t:'核心问题', b:'多 Agent 并行改同一代码库，缺工作区隔离、独立验证、证据留痕与回滚能力，完成不可证明。' },
+      { ic:'cogs', t:'核心方案', b:'以 AgentTeams 为协同治理平面，LoopDesk 作可插拔 Worker Runtime 承载长程执行 + 独立 Verifier + 证据链 + 人工门禁。' },
+      { ic:'lightbulb', t:'创新点', b:'独立验证三重工程强制（上下文隔离／权限隔离／证据锚定），补齐 AgentTeams 官方声明不做的运行时可靠性层。' },
+      { ic:'share-alt', t:'复用价值', b:'Runtime 适配层 / Receipt Schema / 7 个新 Skill / 自举回归集全部 Apache-2.0 开放，任意 AgentTeams 团队可 import 复用。' },
+      { ic:'rocket', t:'当前进展', b:'LoopDesk v0.3.1 已发布可运行：62 个 Skill、625 个测试、Trace 回放、权限矩阵、human gate、worktree 隔离均已实现。' },
+    ].map((c, i) => (
+      <Box key={i} style={{ width:368, height:248, background:'#F5F7FB', borderLeft:'5px solid #FF6B35', borderRadius:'0 12px 12px 0', padding:'22px 24px', display:'flex', flexDirection:'column' }}>
+        <Box style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <Box style={{ width:42, height:42, borderRadius:11, background:'#FFEDE4', justifyContent:'center', alignItems:'center' }}>
+            <FAIcon name={c.ic} style={{ fill:'#FF6B35', width:22, height:22 }} />
+          </Box>
+          <Text style={{ fontSize:21, fontWeight:'bold', color:'#1B1F3B', fontFamily:'PingFang SC' }}>{c.t}</Text>
+        </Box>
+        <Text style={{ fontSize:17, color:'#4A5168', lineHeight:1.65, marginTop:14, fontFamily:'PingFang SC' }}>{c.b}</Text>
+      </Box>
+    ))}
+  </Box>
+</Slide>

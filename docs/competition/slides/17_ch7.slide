@@ -1,0 +1,43 @@
+<Slide style={{ width:'1280px', height:'720px', background:'#FFFFFF', padding:'24px 64px 40px', display:'flex', flexDirection:'column' }}>
+  <Box style={{ display:'flex', alignItems:'center', gap:14, height:64 }}>
+    <Box style={{ width:8, height:34, background:'#FF6B35', borderRadius:4 }} />
+    <Text style={{ fontSize:30, fontWeight:'bold', color:'#1B1F3B', fontFamily:'PingFang SC' }}>落地计划与进展</Text>
+  </Box>
+  <Box style={{ background:'#E9EEFB', borderRadius:10, padding:'12px 20px', display:'flex', alignItems:'center', gap:14, marginTop:4 }}>
+    <FAIcon name='check-circle' style={{ fill:'#2A8A5B', width:24, height:24 }} />
+    <Text style={{ fontSize:15, color:'#1B3A5B', lineHeight:1.5, fontFamily:'PingFang SC' }}><Text style={{ fontWeight:'bold' }}>当前进展 [已实现]</Text>：LoopDesk v0.3.1 已发布可运行 · 625 个测试可离线跑 · 62 个 Skill · 14 个研发 Skill 已复用 · 内核（Loop Engine/MCP/权限/worktree/Trace）就绪。</Text>
+  </Box>
+  <Box style={{ display:'flex', gap:18, marginTop:16 }}>
+    <Box style={{ width:620, display:'flex', flexDirection:'column', gap:12 }}>
+      <Text style={{ fontSize:16, fontWeight:'bold', color:'#1B1F3B', fontFamily:'PingFang SC' }}>复赛交付里程碑</Text>
+      {[
+        { m:'M1', d:'AgentTeams Worker Runtime 适配层（spec.runtime: loopdesk 镜像 + CRD 映射）' },
+        { m:'M2', d:'独立验证链路：Verifier + 三重工程强制 + Validation Receipt', core:true },
+        { m:'M3', d:'7 个新 Skill 包 + Curator 自动蒸馏触发' },
+        { m:'M4', d:'自举回归集 + Badcase 集 + Demo 视频 + 运行报告' },
+      ].map((x, i) => (
+        <Box key={i} style={{ display:'flex', alignItems:'center', gap:14, background:'#F5F7FB', borderRadius:10, padding:'14px 18px', borderLeft: x.core ? '5px solid #FF6B35' : '5px solid #D7DEEC' }}>
+          <Box style={{ width:46, height:46, borderRadius:10, background: x.core ? '#FF6B35' : '#2A2F5B', justifyContent:'center', alignItems:'center' }}>
+            <Text style={{ fontSize:17, fontWeight:'bold', color:'#FFFFFF', fontFamily:'Inter' }}>{x.m}</Text>
+          </Box>
+          <Text style={{ fontSize:15, color:'#1B1F3B', lineHeight:1.5, fontFamily:'PingFang SC' }}>{x.d}</Text>
+        </Box>
+      ))}
+    </Box>
+    <Box style={{ width:500, background:'#1B1F3B', borderRadius:12, padding:'18px 22px', display:'flex', flexDirection:'column' }}>
+      <Text style={{ fontSize:16, fontWeight:'bold', color:'#FFFFFF', fontFamily:'PingFang SC' }}>风险控制</Text>
+      <Box style={{ width:48, height:4, background:'#FF6B35', borderRadius:2, margin:'10px 0 12px' }} />
+      {[
+        { r:'复现风险（封版后无法复现→取消）', m:'自有开源仓库 + 真实回归集，杜绝 Mock' },
+        { r:'越界风险（展示与承诺不符→取消）', m:'§0 事实边界声明全程约束状态标记' },
+        { r:'依赖风险', m:'阿里云 Skills 零适配；存储/可观测可替换' },
+        { r:'时间风险', m:'初赛 8.16 / 复赛 8.25–9.3 / 决赛 9.22，窗口内完成' },
+      ].map((x, i) => (
+        <Box key={i} style={{ padding:'9px 0', borderTop: i===0 ? 'none' : '1px solid #2E3358' }}>
+          <Text style={{ fontSize:13.5, color:'#FFB499', fontWeight:'bold', fontFamily:'PingFang SC' }}>{x.r}</Text>
+          <Text style={{ fontSize:14, color:'#D7DBEA', marginTop:3, fontFamily:'PingFang SC' }}>{x.m}</Text>
+        </Box>
+      ))}
+    </Box>
+  </Box>
+</Slide>

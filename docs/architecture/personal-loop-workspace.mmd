@@ -1,0 +1,70 @@
+flowchart TB
+  subgraph UserSurface["User Surface"]
+    CLI["CLI"]
+    WebUI["Local Web UI"]
+    Terminal["Terminal / IDE"]
+  end
+
+  subgraph ControlPlane["Control Plane"]
+    Gateway["Gateway"]
+    RPC["Gateway RPC"]
+    Auth["Auth / Approval"]
+    Config["Config"]
+    Diagnostics["Diagnostics / Replay"]
+  end
+
+  subgraph LoopPlane["Loop Plane"]
+    LoopEngine["Loop Engine"]
+    Scheduler["Scheduler"]
+    Triage["Triage Skill"]
+    Maker["Maker"]
+    Checker["Checker"]
+    Escalation["Escalation"]
+    RunLog["Run Log"]
+    Budget["Budget / Cost"]
+  end
+
+  subgraph StatePlane["State Plane"]
+    WorkspaceState["Workspace State Protocol"]
+    LoopState["LOOP-STATE.json"]
+    Memory["Memory Store"]
+    Sessions["Session Store"]
+    Skills["Skills Store"]
+    Artifacts["Artifacts Store"]
+  end
+
+  subgraph RuntimePlane["Runtime Plane"]
+    Router["SquillaRouter"]
+    Provider["Provider Runtime"]
+    Tools["Tool Runtime"]
+    Sandbox["Sandbox / Permissions"]
+    Compaction["Compaction"]
+    Subagents["Subagents"]
+  end
+
+  subgraph AdapterPlane["Adapter Plane"]
+    MCP["MCP Adapter"]
+    ACP["ACP Adapter"]
+    ToolAdapters["Tool Adapters"]
+    ChannelBridges["Channel Bridges"]
+  end
+
+  subgraph ExternalTools["External Tools"]
+    ClaudeCode["Claude Code"]
+    Codex["Codex"]
+    Codebuddy["Codebuddy"]
+    Trae["Trae"]
+    Gemini["Gemini / Local CLIs"]
+  end
+
+  UserSurface --> ControlPlane
+  ControlPlane --> LoopPlane
+  LoopPlane --> StatePlane
+  StatePlane --> RuntimePlane
+  RuntimePlane --> AdapterPlane
+  AdapterPlane --> ExternalTools
+  ExternalTools --> AdapterPlane
+  AdapterPlane --> StatePlane
+  StatePlane --> LoopPlane
+  LoopPlane --> ControlPlane
+  ControlPlane --> UserSurface

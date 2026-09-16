@@ -1,0 +1,108 @@
+@import 'tailwindcss';
+
+/* ============================================================
+   LoopDesk v0.2 — design tokens (1:1 with the Ardot canvas)
+   All values sampled directly from the source design file.
+   ============================================================ */
+
+:root {
+  /* ---- surfaces ---- */
+  --c-base: #0b0e14; /* canvas background        */
+  --c-rail: #0e1118; /* left rail / inner wells  */
+  --c-surface: #151922; /* elevated cards / inputs  */
+  --c-selected: #13261d; /* active & selected state   */
+  --c-pill: #182437; /* branch pill / blue chip  */
+
+  /* ---- lines ---- */
+  --c-border: #1b2030; /* panel + table hairlines  */
+  --c-border-head: #1c212b; /* topbar / header rules    */
+  --c-divider: #212630; /* inner box + card borders */
+  --c-chip: #242936; /* chips, inputs, kbd       */
+  --c-proj-active: #29303d; /* active project outline   */
+  --c-kbd: #333b4a; /* keyboard key outline     */
+  --c-avatar: #2a313d;
+
+  /* ---- accents ---- */
+  --c-emerald: #34d399;
+  --c-emerald-edge: #33d499;
+  --c-blue: #5b9dff;
+  --c-amber: #e8a33d;
+  --c-teal: #2dd4bf;
+
+  /* ---- accents, tinted wells ---- */
+  --c-warn-well: #1a1611;
+  --c-cmd-well: #0f172a;
+  --c-mcp-well: #0b1f1e;
+
+  /* ---- type ---- */
+  --c-tp: #e6e9ef; /* primary   */
+  --c-ts: #9aa3b2; /* secondary */
+  --c-tm: #6b727f; /* muted     */
+
+  /* ---- families ---- */
+  --f-sans: 'Noto Sans SC', 'Sarasa Gothic SC', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', system-ui, sans-serif;
+  --f-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', 'JetBrains Mono', Menlo, monospace;
+  --f-display: 'Geist', 'Noto Sans SC', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--c-base);
+  color: var(--c-tp);
+  font-family: var(--f-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font-family: inherit;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+}
+
+input,
+textarea {
+  font-family: inherit;
+  border: none;
+  background: none;
+  outline: none;
+  color: inherit;
+}
+
+/* 新建任务面板的「描述」是真实输入框；空态要长得和画布上的 muted 占位文字
+   一模一样，否则画布保真度会掉。 */
+textarea::placeholder {
+  color: var(--c-tm);
+  opacity: 1;
+}
+
+/* thin, on-brand scrollbars for the board + panel overflow */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #1f2533;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2a3140;
+}

@@ -1,0 +1,181 @@
+    1: """Loop workspace state schema and helper transitions."""
+       
+    1: from __future__ import annotations
+       
+    1: import json
+    1: from datetime import datetime
+    1: from enum import Enum
+    1: from typing import Any
+       
+    1: from pydantic import BaseModel, Field
+       
+       
+    2: class LoopWorkspaceStatus(str, Enum):
+    1:     PLANNED = "planned"
+    1:     ACTIVE = "active"
+    1:     BLOCKED = "blocked"
+    1:     COMPLETED = "completed"
+    1:     CANCELED = "canceled"
+       
+       
+    2: class LoopWorkspaceState(BaseModel):
+    1:     """Portable source of truth for a personal loop workspace."""
+       
+    1:     schema_version: int = 1
+    1:     workspace_root: str | None = None
+    1:     project_name: str | None = None
+    1:     intent: str | None = None
+    1:     status: LoopWorkspaceStatus = LoopWorkspaceStatus.PLANNED
+    1:     tags: list[str] = Field(default_factory=list)
+    1:     selected_template: str | None = None
+    1:     run_log: list[dict[str, Any]] = Field(default_factory=list)
+    1:     approvals: list[dict[str, Any]] = Field(default_factory=list)
+    2:     cost_observatory: dict[str, Any] = Field(
+    1:         default_factory=lambda: {
+                   "budget_cap_usd": 0.0,
+                   "spend_usd": 0.0,
+                   "request_count": 0,
+                   "last_event_at": None,
+                   "status": "ok",
+               }
+           )
+    2:     safety: dict[str, Any] = Field(
+    1:         default_factory=lambda: {
+                   "kill_switch_enabled": False,
+                   "denylist": [],
+                   "retained_worktrees": [],
+               }
+           )
+    2:     current_work_id: str | None = Field(
+    1:         default=None, description="Current frontend-facing work item id."
+           )
+    2:     current_work_source: str | None = Field(
+    1:         default=None, description="Whether current work came from a Loop or external resume."
+           )
+    1:     current_work_summary: str | None = None
+    1:     override_history: list[dict[str, Any]] = Field(default_factory=list)
+    1:     created_at: str = Field(default_factory=lambda: _utc_now())
+    1:     updated_at: str = Field(default_factory=lambda: _utc_now())
+       
+    1:     model_config = {"populate_by_name": True}
+       
+    2:     @classmethod
+    2:     def create(cls, **data: Any) -> "LoopWorkspaceState":
+               coerced = {
+                   name: str(value) if name == "workspace_root" and not isinstance(value, str) else value
+                   for name, value in data.items()
+               }
+               return cls(**coerced)
+       
+    1:     def to_dict(self) -> dict[str, Any]:
+               return json.loads(self.model_dump_json())
+       
+    2:     @classmethod
+    2:     def from_dict(cls, payload: dict[str, Any]) -> "LoopWorkspaceState":
+               return cls.model_validate_json(json.dumps(payload))
+       
+    5:     def record_override(
+    4:         self, source: str, reason: str, previous_status: LoopWorkspaceStatus | None = None
+    1:     ) -> None:
+               self.override_history.append(
+                   {
+                       "source": source,
+                       "reason": reason,
+                       "previous_status": previous_status.value if previous_status else None,
+                       "status": self.status.value,
+                       "updated_at": _utc_now(),
+                   }
+               )
+               self.updated_at = _utc_now()
+       
+    1:     def append_run_log(self, entry: dict[str, Any]) -> None:
+               run_log_entry = {
+                   "source": entry.get("source", "unknown"),
+                   "workId": entry.get("workId", self.current_work_id),
+                   "status": entry.get("status", self.status.value),
+                   "summary": entry.get("summary", ""),
+                   "previousStatus": entry.get("previousStatus"),
+                   "toolEvent": entry.get("toolEvent") or {
+                       key: value
+                       for key, value in entry.items()
+                       if key not in {"source", "workId", "status", "summary", "previousStatus"}
+                   },
+                   "updated_at": _utc_now(),
+               }
+               self.run_log = [*self.run_log[-49:], run_log_entry]
+               self.current_work_id = run_log_entry["workId"]
+               self.current_work_source = run_log_entry["source"]
+               self.current_work_summary = run_log_entry["summary"]
+               if run_log_entry["status"] in {status.value for status in LoopWorkspaceStatus}:
+                   self.status = LoopWorkspaceStatus(run_log_entry["status"])
+               self.cost_observatory["request_count"] = self.cost_observatory.get("request_count", 0) + 1
+               self.cost_observatory["last_event_at"] = _utc_now()
+               if self.cost_observatory.get("status") == "ok":
+                   self.cost_observatory["status"] = self.status.value
+               self.updated_at = _utc_now()
+       
+    1:     def record_approval(self, approval: dict[str, Any]) -> None:
+               approval.setdefault("updated_at", _utc_now())
+               self.approvals = [entry for entry in self.approvals if entry.get("id") != approval.get("id")]
+               self.approvals.append(approval)
+               if approval.get("status") == "approved":
+                   self.cost_observatory["status"] = self.status.value
+               self.updated_at = _utc_now()
+       
+    1:     def record_cost(self, cost_payload: dict[str, Any]) -> None:
+               cost = {
+                   key: cost_payload.get(key)
+                   for key in {
+                       "input_tokens",
+                       "output_tokens",
+                       "total_tokens",
+                       "reasoning_tokens",
+                       "cached_tokens",
+                       "cache_read_tokens",
+                       "cache_write_tokens",
+                       "cost_usd",
+                       "billed_cost",
+                       "estimated_cost_usd",
+                       "model",
+                       "request_count",
+                       "cost_source",
+                   }
+                   if key in cost_payload
+               }
+               budget_cap = cost_payload.get("budget_cap_usd")
+               if budget_cap is not None:
+                   self.cost_observatory["budget_cap_usd"] = float(budget_cap)
+               spend_delta = float(cost.get("cost_usd") or cost.get("estimated_cost_usd") or 0.0)
+               self.cost_observatory["spend_usd"] = round(self.cost_observatory.get("spend_usd", 0.0) + spend_delta, 8)
+               if "request_count" in cost:
+                   self.cost_observatory["request_count"] = self.cost_observatory.get("request_count", 0) + int(cost["request_count"])
+               if self.kill_switch_enabled():
+                   self.cost_observatory["status"] = "paused"
+               elif self.cost_observatory.get("status") in {None, "paused"}:
+                   self.cost_observatory["status"] = self.status.value
+               self.updated_at = _utc_now()
+       
+    1:     def set_kill_switch(self, enabled: bool) -> None:
+               self.safety["kill_switch_enabled"] = bool(enabled)
+               self.cost_observatory["status"] = "paused" if enabled else self.status.value
+               self.updated_at = _utc_now()
+       
+    1:     def set_denylist(self, denylist: list[str]) -> None:
+               self.safety["denylist"] = sorted({entry.strip() for entry in denylist if str(entry).strip()})
+               self.updated_at = _utc_now()
+       
+    1:     def retain_worktree(self, worktree_path: str) -> None:
+               retained = [entry for entry in self.safety.get("retained_worktrees", []) if entry != worktree_path]
+               retained.append(worktree_path)
+               self.safety["retained_worktrees"] = retained[-20:]
+               self.updated_at = _utc_now()
+       
+    1:     def kill_switch_enabled(self) -> bool:
+               return bool(self.safety.get("kill_switch_enabled"))
+       
+    1:     def denylist_contains(self, entry: str) -> bool:
+               return str(entry).strip().lower() in {item.lower() for item in self.safety.get("denylist", [])}
+       
+       
+    1: def _utc_now() -> str:
+           return datetime.utcnow().isoformat(timespec="seconds") + "Z"

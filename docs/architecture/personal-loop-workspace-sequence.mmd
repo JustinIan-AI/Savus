@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant U as Developer
+    participant CLI as CLI / Web UI
+    participant Loop as Loop Engine
+    participant State as Workspace State
+    participant Adapter as Adapter Plane
+    participant Tool as External Tool
+    participant Runtime as Runtime
+
+    U->>CLI: start or resume flow
+    CLI->>Loop: load loop intent and budget
+    Loop->>State: read LOOP-STATE, memory, skills
+    Loop->>Adapter: prepare tool-ready context
+    Adapter->>Tool: send session prompt or task
+    Tool->>Runtime: run tools and edit workspace
+    Runtime->>State: write session, memory, artifacts
+    Runtime->>Adapter: stream updates and approvals
+    Adapter->>Loop: translate events into loop state
+    Loop->>State: update task status, results, lessons
+    Loop->>CLI: report outcome, next step, cost
+    CLI->>U: show concise flow result

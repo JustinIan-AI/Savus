@@ -1,0 +1,16 @@
+    1: """LoopDesk — multi-channel LLM gateway and agent runtime."""
+       
+    1: from __future__ import annotations
+       
+    1: from importlib.metadata import PackageNotFoundError
+    1: from importlib.metadata import version as _resolve_version
+       
+    1: try:
+    1:     __version__ = _resolve_version("loopdesk")
+       except PackageNotFoundError:  # pragma: no cover - source tree without dist metadata
+           # Editable/source checkouts without installed distribution metadata fall
+           # back to a sentinel rather than a hardcoded semver that silently goes
+           # stale (the bug this module exists to prevent).
+           __version__ = "0.0.0+unknown"
+       
+    1: __all__ = ["__version__"]

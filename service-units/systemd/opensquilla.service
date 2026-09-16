@@ -1,0 +1,36 @@
+# LoopDesk Linux systemd --user unit — user-scope only.
+#
+# Install:
+#   mkdir -p ~/.config/systemd/user
+#   cp service-units/systemd/loopdesk.service ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now loopdesk.service
+#
+# Safety contract — DO NOT REMOVE:
+#   LOOPDESK_LISTEN=127.0.0.1 binds the gateway to loopback only. Network
+#   exposure is an explicit operator opt-in. To expose the gateway on the
+#   network, create a drop-in override at
+#     ~/.config/systemd/user/loopdesk.service.d/override.conf
+#   with:
+#     [Service]
+#     Environment="LOOPDESK_LISTEN=0.0.0.0"
+#   then re-run `systemctl --user daemon-reload` + `systemctl --user restart
+#   loopdesk.service`. Only run with LOOPDESK_LISTEN=0.0.0.0 behind a trusted
+#   reverse proxy or VPN — loopdesk's first-class auth assumes loopback scope
+#   by default. The S19 boot WARNING (gateway.bind.public) will fire whenever
+#   the unit is configured for wildcard bind.
+
+[Unit]
+Description=LoopDesk agent runtime gateway (loopback default)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/loopdesk gateway run
+Environment="LOOPDESK_LISTEN=127.0.0.1"
+Environment="LOOPDESK_GATEWAY_PORT=18790"
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=default.target

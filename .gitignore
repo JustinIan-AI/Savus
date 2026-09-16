@@ -1,0 +1,94 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+/dist/
+/build/
+.venv/
+.env
+.env.test
+loopdesk.toml
+.gateway.log
+.gateway-test.html
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+.DS_Store
+.*/
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml
+data/
+.loopdesk/
+benchmarks/
+specs/
+# Local agent/editor instructions and runtime state.
+AGENTS.md
+!docs/agents.md
+!src/loopdesk/identity/templates/bootstrap/AGENTS.md
+CLAUDE.md
+GEMINI.md
+.codex
+.codex/
+.claude/
+.omc/
+.omx/
+
+# One-off planning artifacts kept local, not published.
+/PLAN.md
+/SPEC.md
+/prd.json
+/progress.txt
+/plans/
+/docs/superpowers/
+*.png
+# Brand assets are intentionally tracked: top-level assets/ for branding,
+# and the WebUI static asset path so the gateway page renders the mark.
+!/assets/*.png
+!/src/loopdesk/gateway/static/img/*.png
+site/
+/plugins/
+crontab-*
+~/
+/reference-*
+/reference-mem
+/bench-mem
+.omx/
+tests/functional/reports/
+
+# Local-only release-hygiene tests that reference legacy artifact names
+# kept off the public tree.
+/tests/_private/
+
+# Maintainer-local design / planning artifacts kept beside the repo but
+# not part of the published source. Move into /docs/proposals/ if/when
+# they are ready for public consumption.
+/meta-skills.pptx
+/kb-index.xlsx
+
+# Generated local outputs from document/meta-skill smoke runs.
+/texput.log
+/src/loopdesk/skills/bundled/multi-search-engine/Tokyo_5日出差行程.docx
+
+# Local-only fetcher for the clawhub skills imported into bundled/.
+# The bundled copies are tracked; the raw zip downloads and the fetch
+# helper stay out of the published tree.
+/_clawhub_skills/
+/scripts/_fetch_clawhub_skills.py
+.worktrees/
+.agents
+
+# Project-scoped agent skills are versioned in-tree when needed.
+!.agents/skills/
+
+# SquillaRouter V4 Phase 3 权重二进制（74.5MB）不进版本库：体积大且非产品公开面
+# （squilla_router 在模块审计中为 Cancel 模块）。保留在同一 bundle 内的运行时源码与
+# 配置（runtime_src/、router.runtime.yaml、artifact_manifest.json 等，约 700KB），
+# 缺失的权重按 artifact_manifest.json 记录的 sha256 校验后放回同名路径即可恢复。
+# 注意：权重缺失时 router 与本地 embedding 会降级/报错，恢复步骤见 docs。
+src/loopdesk/squilla_router/models/**/*.bin
+src/loopdesk/squilla_router/models/**/*.onnx
+src/loopdesk/squilla_router/models/**/*.pkl
+src/loopdesk/squilla_router/models/**/*.joblib

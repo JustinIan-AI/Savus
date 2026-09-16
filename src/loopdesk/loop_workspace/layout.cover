@@ -1,0 +1,55 @@
+    1: """Loop workspace directory layout constants and helpers."""
+       
+    1: from __future__ import annotations
+       
+    1: from dataclasses import dataclass
+    1: from pathlib import Path
+       
+       
+    3: @dataclass(frozen=True)
+    2: class LoopWorkspaceLayout:
+    1:     root: Path
+    1:     state_file: Path
+    1:     memory_dir: Path
+    1:     skills_dir: Path
+    1:     artifacts_dir: Path
+    1:     worktrees_dir: Path
+    1:     personal_templates_dir: Path
+    1:     memory_index_path: Path
+       
+    2:     @classmethod
+    2:     def ensure(cls, root: Path) -> "LoopWorkspaceLayout":
+               resolved = root.resolve()
+               if resolved.parent == resolved:
+                   raise ValueError(
+                       "Requested loop workspace path is invalid or outside an existing workspace boundary."
+                   )
+               instance = cls(
+                   root=resolved,
+                   state_file=resolved / "LOOP-STATE.json",
+                   memory_dir=resolved / "memory",
+                   skills_dir=resolved / "skills",
+                   artifacts_dir=resolved / "artifacts",
+                   worktrees_dir=resolved / "worktrees",
+                   personal_templates_dir=resolved / "personal_templates",
+                   memory_index_path=resolved / "memory" / "INDEX.md",
+               )
+               instance.state_file.parent.mkdir(parents=True, exist_ok=True)
+               for path in [
+                   instance.memory_dir,
+                   instance.skills_dir,
+                   instance.artifacts_dir,
+                   instance.worktrees_dir,
+                   instance.personal_templates_dir,
+               ]:
+                   path.mkdir(parents=True, exist_ok=True)
+               instance.memory_index_path.parent.mkdir(parents=True, exist_ok=True)
+               if not instance.memory_index_path.exists():
+                   instance.memory_index_path.write_text("# LoopDesk Memory Index\n\n", encoding="utf-8")
+               return instance
+       
+    1:     def require_under_workspace(self, path: Path) -> Path:
+               resolved = Path(path).resolve()
+               if not str(resolved).startswith(str(self.root.resolve())):
+                   raise ValueError("Requested path is outside the loop workspace.")
+               return resolved

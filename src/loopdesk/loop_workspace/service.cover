@@ -1,0 +1,201 @@
+    1: """Personal loop workspace service combining state and layout concerns."""
+       
+    1: from __future__ import annotations
+       
+    1: import json
+    1: from pathlib import Path
+       
+    1: from loopdesk.loop_workspace.helpers import ensure_loop_workspace
+    1: from loopdesk.loop_workspace.layout import LoopWorkspaceLayout
+    1: from loopdesk.loop_workspace.repository import LoopWorkspaceRepository
+    1: from loopdesk.loop_workspace.templates import list_personal_templates, load_personal_template
+    1: from loopdesk.loop_workspace.worktree import create_loop_worktree, remove_loop_worktree
+       
+       
+    2: class LoopWorkspaceService:
+    2:     @classmethod
+    2:     def from_root(cls, root: Path) -> "LoopWorkspaceService":
+               instance = cls(LoopWorkspaceLayout.ensure(root))
+               instance.ensure_initialized()
+               return instance
+       
+    1:     def __init__(self, layout: LoopWorkspaceLayout) -> None:
+               self._layout = layout
+               self._repository = LoopWorkspaceRepository(layout)
+       
+    2:     @property
+    2:     def layout(self) -> LoopWorkspaceLayout:
+               return self._layout
+       
+    2:     @property
+    2:     def repository(self) -> LoopWorkspaceRepository:
+               return self._repository
+       
+    4:     def ensure_initialized(
+    3:         self, *, intent: str | None = None, selected_template: str | None = None
+    1:     ) -> LoopWorkspaceLayout:
+               return ensure_loop_workspace(
+                   self._layout.root,
+                   intent=intent,
+                   selected_template=selected_template,
+                   directories=self._required_directories(),
+               )
+       
+    1:     def current_state(self) -> dict[str, object]:
+               state = self._repository.read()
+               return {
+                   "state_file": str(self._layout.state_file),
+                   "workspace_root": state.workspace_root,
+                   "project_name": state.project_name or _project_name_from_root(self._layout.root),
+                   "intent": state.intent,
+                   "status": state.status.value,
+                   "tags": state.tags,
+                   "selected_template": state.selected_template,
+                   "current_work_id": state.current_work_id,
+                   "current_work_source": state.current_work_source,
+                   "current_work_summary": state.current_work_summary,
+                   "run_log": state.run_log[-20:],
+                   "approvals": state.approvals[-20:],
+                   "cost_observatory": state.cost_observatory,
+                   "safety": state.safety,
+                   "updated_at": state.updated_at,
+                   "directories": self._directory_snapshot(),
+                   "templates": [
+                       self._template_payload(template) for template in list_personal_templates()
+                   ],
+               }
+       
+    1:     def apply_mutation(self, mutator) -> None:
+               self._repository.update(mutator)
+       
+    6:     def record_work_item(
+    5:         self, work_id: str, source: str, summary: str, *, status: str = "active"
+    1:     ) -> dict[str, object]:
+               def _mutator(state):
+                   state.current_work_id = work_id
+                   state.current_work_source = source
+                   state.current_work_summary = summary
+                   state.status = state.status.__class__(status)
+                   if state.status.value == "completed":
+                       state.tags = [tag for tag in state.tags if tag != "in_progress"]
+                   else:
+                       state.tags = list(dict.fromkeys([*state.tags, "in_progress"]))
+       
+               self._repository.update(_mutator)
+               return self.current_state()
+       
+    1:     def create_worktree(self, work_id: str, *, branch: str | None = None) -> dict[str, object]:
+               target = create_loop_worktree(self._layout, work_id, branch=branch)
+               self._repository.append_run_log(
+                   {
+                       "source": "loop_workspace",
+                       "workId": work_id,
+                       "status": self._repository.read().status.value,
+                       "summary": f"Created worktree at {target}.",
+                   }
+               )
+               return {
+                   "workId": work_id,
+                   "path": str(target),
+                   "branch": branch or f"loopdesk/goal/{work_id}",
+               }
+       
+    1:     def remove_worktree(self, work_id: str, *, retain_snapshot: bool = False) -> dict[str, object]:
+               state = self._repository.read()
+               if work_id in state.safety.get("retained_worktrees", []):
+                   retain_snapshot = True
+               if retain_snapshot:
+                   state.retain_worktree(str(self._layout.worktrees_dir / work_id))
+                   self._repository.write(state)
+                   return {"workId": work_id, "retained": True}
+               remove_loop_worktree(self._layout, work_id)
+               self._repository.write(state)
+               return {"workId": work_id, "retained": False}
+       
+    1:     def list_worktrees(self) -> dict[str, object]:
+               return {
+                   "worktrees": [
+                       {
+                           "name": path.name,
+                           "exists": path.exists(),
+                       }
+                       for path in sorted(self._layout.worktrees_dir.iterdir())
+                       if path.is_dir()
+                   ]
+               }
+       
+    1:     def record_run_log(self, run_log: dict[str, object]) -> dict[str, object]:
+               state = self._repository.read()
+               state.append_run_log(run_log)
+               if run_log.get("cost"):
+                   state.record_cost(run_log["cost"])
+               self._repository.write(state)
+               return self.current_state()
+       
+    1:     def record_approval(self, approval: dict[str, object]) -> dict[str, object]:
+               state = self._repository.read()
+               state.record_approval(approval)
+               self._repository.write(state)
+               return self.current_state()
+       
+    1:     def set_kill_switch(self, enabled: bool) -> dict[str, object]:
+               state = self._repository.read()
+               state.set_kill_switch(enabled)
+               self._repository.write(state)
+               return self.current_state()
+       
+    1:     def set_denylist(self, entries: list[str]) -> dict[str, object]:
+               state = self._repository.read()
+               state.set_denylist(entries)
+               self._repository.write(state)
+               return self.current_state()
+       
+    1:     def export_state(self, destination: Path | None = None) -> dict[str, object]:
+               payload = self.current_state()
+               target = destination or (self._layout.root / "LOOP-STATE.export.json")
+               target.write_text(
+                   json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+               )
+               return {"path": str(target)}
+       
+    1:     def get_context_pack(self) -> dict[str, object]:
+               state = self._repository.read()
+               return {
+                   "workspace_root": state.workspace_root,
+                   "intent": state.intent,
+                   "selected_template": state.selected_template,
+                   "status": state.status.value,
+                   "current_work_id": state.current_work_id,
+                   "current_work_summary": state.current_work_summary,
+                   "recent_run_log": state.run_log[-10:],
+                   "open_approvals": [
+                       entry for entry in state.approvals if entry.get("status") != "approved"
+                   ][-20:],
+                   "cost_observatory": state.cost_observatory,
+                   "safety": state.safety,
+                   "templates": [self._template_payload(template) for template in list_personal_templates()],
+               }
+       
+    1:     def _directory_snapshot(self) -> dict[str, bool]:
+               return {
+                   "memory": self._layout.memory_dir.exists(),
+                   "skills": self._layout.skills_dir.exists(),
+                   "artifacts": self._layout.artifacts_dir.exists(),
+                   "worktrees": self._layout.worktrees_dir.exists(),
+                   "personal_templates": self._layout.personal_templates_dir.exists(),
+               }
+       
+    1:     def _template_payload(self, template):
+               return {
+                   "id": template.id,
+                   "name": template.name,
+                   "description": template.description,
+                   "roles": template.roles,
+               }
+       
+    1:     def _required_directories(self):
+               return ("memory", "skills", "artifacts", "worktrees", "personal_templates")
+       
+       
+    1: def _project_name_from_root(root: Path) -> str:
+           return root.resolve().name or "loop-workspace"

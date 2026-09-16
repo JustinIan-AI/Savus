@@ -1,0 +1,18 @@
+<Slide style={{ width:'1280px', height:'720px', background:'#1B1F3B', padding:'70px 80px', display:'flex', flexDirection:'column', justifyContent:'center', position:'relative' }}>
+  <Box style={{ position:'absolute', top:0, right:0, width:260, height:260, background:'linear-gradient(135deg,#FF6B35 0%, transparent 100%)', opacity:0.16 }} />
+  <Box style={{ position:'absolute', left:80, top:74, width:60, height:8, background:'#FF6B35', borderRadius:4 }} />
+  <Text style={{ fontSize:22, color:'#FF6B35', fontWeight:'bold', letterSpacing:3, fontFamily:'Inter' }}>GOAI 新智基座 · Agent Infra 赛道</Text>
+  <Text style={{ fontSize:78, fontWeight:'bold', color:'#FFFFFF', marginTop:16, fontFamily:'PingFang SC' }}>LoopDesk</Text>
+  <Text style={{ fontSize:38, fontWeight:'bold', color:'#FFFFFF', marginTop:4, fontFamily:'PingFang SC' }}>可验证交付的 Agent 研发运行时</Text>
+  <Box style={{ width:90, height:6, background:'#FF6B35', borderRadius:3, margin:'30px 0' }} />
+  <Text style={{ fontSize:22, color:'#C7CCE0', lineHeight:1.7, fontFamily:'PingFang SC', maxWidth:920 }}>
+    作为 AgentTeams 的<Text style={{ color:'#FF6B35', fontWeight:'bold' }}>第四种 Worker Runtime</Text>，让 AI Agent 的研发交付从<Text style={{ color:'#FF6B35', fontWeight:'bold' }}>“自己说完成”</Text>变成<Text style={{ color:'#FF6B35', fontWeight:'bold' }}>“被独立验证过”</Text>。
+  </Text>
+  <Box style={{ position:'absolute', bottom:56, left:80, display:'flex', gap:36, alignItems:'center' }}>
+    <Text style={{ fontSize:16, color:'#9AA1B8', fontFamily:'Inter' }}>初赛方案 v1.0</Text>
+    <Box style={{ width:1, height:16, background:'#3A4068' }} />
+    <Text style={{ fontSize:16, color:'#9AA1B8', fontFamily:'Inter' }}>2026.08</Text>
+    <Box style={{ width:1, height:16, background:'#3A4068' }} />
+    <Text style={{ fontSize:16, color:'#9AA1B8', fontFamily:'Inter' }}>Apache-2.0 · v0.3.1</Text>
+  </Box>
+</Slide>
