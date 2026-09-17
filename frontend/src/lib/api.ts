@@ -22,6 +22,25 @@ export interface GateDecisionPayload {
   root?: string
 }
 
+/** `PATCH /api/v1/tasks/{id}` —— 纯生命周期移动，不带裁决语义。
+    只发送真正要改的字段：后端会把未提供的字段原样保留。 */
+export interface TaskUpdatePayload {
+  status?: string
+  phase?: string
+  title?: string
+  template?: string
+  intent?: string
+  root?: string
+}
+
+export interface TaskUpdateResult {
+  ok: boolean
+  /** true = 这条任务此前只存在于画布种子里，本次 PATCH 才落进工作区。 */
+  created?: boolean
+  task?: ApiTask
+  error?: string
+}
+
 export const API_BASE = '/api/v1'
 
 /** 后端 project_id 目前是占位参数（网关尚未按项目分区），统一走 default。 */
@@ -67,6 +86,28 @@ export async function createTask(
   }
 }
 
+export async function updateTask(
+  taskId: string,
+  payload: TaskUpdatePayload
+): Promise<TaskUpdateResult> {
+  try {
+    const res = await fetch(`${API_BASE}/tasks/${encodeURIComponent(taskId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      console.warn('PATCH task rejected by gateway:', data)
+      return { ok: false, error: data?.error || `HTTP ${res.status}` }
+    }
+    return { ok: true, created: !!data.created, task: data.task }
+  } catch (err) {
+    console.error('Update task error:', err)
+    return { ok: false, error: String(err) }
+  }
+}
+
 export async function submitGateDecision(
   taskId: string,
   payload: GateDecisionPayload
@@ -101,7 +142,13 @@ export function subscribeToEvents(
     }
   }
 
-  const customEvents = ['task_created', 'task_phase_changed', 'gate_decision_recorded', 'connected']
+  const customEvents = [
+    'task_created',
+    'task_updated',
+    'task_phase_changed',
+    'gate_decision_recorded',
+    'connected',
+  ]
   customEvents.forEach((evtName) => {
     eventSource.addEventListener(evtName, (e: any) => {
       try {
@@ -119,5 +166,55 @@ export function subscribeToEvents(
 
   return () => {
     eventSource.close()
+  }
+}
+
+
+export interface ProjectItem {
+  id: string
+  name: string
+  mode: 'local' | 'remote'
+  root_path?: string
+  remote_url?: string
+  required_connector?: string
+}
+
+export async function fetchProjects(): Promise<ProjectItem[]> {
+  try {
+    const res = await fetch(API_BASE + "/projects")
+    if (!res.ok) return []
+    const data = await res.json()
+    return data.projects || []
+  } catch (err) {
+    console.warn('fetchProjects fallback:', err)
+    return [
+      { id: 'default', name: 'Acme Platform (Local)', mode: 'local', root_path: '.' },
+      { id: 'remote-jira', name: 'Cloud Core Repo (Remote)', mode: 'remote', remote_url: 'https://github.com/acme/core.git', required_connector: 'jira' },
+    ]
+  }
+}
+
+export interface TaskValidationResult {
+  ok: boolean
+  code?: string
+  required_connector?: string
+  message?: string
+}
+
+export async function validateTaskCreation(
+  projectId: string,
+  payload: { intent: string; template_id: string; remote?: boolean; required_connector?: string }
+): Promise<TaskValidationResult> {
+  try {
+    const res = await fetch(API_BASE + "/projects/" + projectId + "/tasks/validate", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) return { ok: true }
+    return await res.json()
+  } catch (err) {
+    console.warn('validateTaskCreation fallback:', err)
+    return { ok: true }
   }
 }

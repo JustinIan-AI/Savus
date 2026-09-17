@@ -554,6 +554,9 @@ def create_gateway_app(
     )
     from loopdesk.gateway.tasks import register_task_routes  # noqa: PLC0415
     register_task_routes(app)
+    from loopdesk.gateway.projects import register_project_routes  # noqa: PLC0415
+    register_project_routes(app)
+
     from loopdesk.gateway.events import register_event_routes  # noqa: PLC0415
     register_event_routes(app)
 

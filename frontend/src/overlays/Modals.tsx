@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { fetchProjects, validateTaskCreation, type ProjectItem, type TaskValidationResult } from '../lib/api'
 import { CloseIcon } from '../components/icons'
 import {
   ADD_AGENT_FIELDS,
@@ -485,7 +486,7 @@ export function GateDecisionModal({
                   color: decision === 'approved' ? 'var(--c-base)' : 'var(--c-tp)',
                   fontWeight: 500,
                   fontSize: 13,
-                  cursor: 'pointer',
+                  cursor: validation.ok ? 'pointer' : 'not-allowed', opacity: validation.ok ? 1 : 0.5,
                   border: 'none',
                 }}
               >
@@ -501,7 +502,7 @@ export function GateDecisionModal({
                   color: decision === 'denied' ? '#fff' : 'var(--c-tp)',
                   fontWeight: 500,
                   fontSize: 13,
-                  cursor: 'pointer',
+                  cursor: validation.ok ? 'pointer' : 'not-allowed', opacity: validation.ok ? 1 : 0.5,
                   border: 'none',
                 }}
               >
@@ -553,7 +554,7 @@ export function GateDecisionModal({
               color: 'var(--c-ts)',
               background: 'transparent',
               border: '1px solid var(--c-chip)',
-              cursor: 'pointer',
+              cursor: validation.ok ? 'pointer' : 'not-allowed', opacity: validation.ok ? 1 : 0.5,
             }}
           >
             取消
@@ -569,7 +570,7 @@ export function GateDecisionModal({
               fontWeight: 500,
               color: '#fff',
               border: 'none',
-              cursor: 'pointer',
+              cursor: validation.ok ? 'pointer' : 'not-allowed', opacity: validation.ok ? 1 : 0.5,
             }}
           >
             确认提交
