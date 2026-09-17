@@ -22,6 +22,7 @@ import {
   fetchTasks,
   submitGateDecision,
   subscribeToEvents,
+  updateTask,
   type ApiTask,
 } from './lib/api'
 import { DEFAULT_TASK_ID, setRuntimeTasks, taskById, type DetailAnchor, type NavKey } from './data'
@@ -120,6 +121,18 @@ export default function App() {
     await refresh()
   }
 
+  /** PATCH 任务状态（提交评审 / 状态下拉），随后重新取快照。
+
+      这条路径是 **upsert**：看板上的画布卡片只是设计稿夹具，工作区里
+      未必有对应条目，因此把一张种子卡移到「评审中」必须顺便把它物化，
+      否则卡片会在下次取快照时跌回原列。带了标题就是为了这一步。 */
+  const handleSetStatus = async (cardId: string, status: string) => {
+    const card = taskById(cardId)
+    const res = await updateTask(cardId, { status, title: card?.title })
+    if (!res.ok) console.warn('Set status failed:', res.error)
+    await refresh()
+  }
+
   return (
     <div
       style={{
@@ -165,6 +178,7 @@ export default function App() {
                 selectedId={selectedId}
                 onSelect={setSelectedId}
                 onGate={openGate}
+                onSetStatus={handleSetStatus}
               />
             ))}
           {nav === 'assets' && <TeamAssets />}
@@ -179,7 +193,7 @@ export default function App() {
         </main>
 
         {drawerOpen && <SessionDrawer onClose={() => setDrawerOpen(false)} onNewSession={() => setDrawerOpen(false)} />}
-        {newTaskOpen && <NewTaskModal onClose={() => setNewTaskOpen(false)} onConfirm={handleCreateTask} />}
+        {newTaskOpen && <NewTaskModal onClose={() => setNewTaskOpen(false)} onConfirm={handleCreateTask} onNavigateSettings={() => setNav('settings-mcp')} />}
         {addAgentOpen && <AddAgentModal onClose={() => setAddAgentOpen(false)} onConfirm={() => setAddAgentOpen(false)} />}
         {addConnectorOpen && (
           <AddConnectorModal onClose={() => setAddConnectorOpen(false)} onConfirm={() => setAddConnectorOpen(false)} />

@@ -218,3 +218,23 @@ export async function validateTaskCreation(
     return { ok: true }
   }
 }
+
+export async function createProject(payload: {
+  name: string
+  mode: "local" | "remote"
+  root_path?: string
+  remote_url?: string
+  required_connector?: string
+}): Promise<{ ok: boolean; project?: ProjectItem; error?: string }> {
+  try {
+    const res = await fetch(API_BASE + "/projects", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+    return await res.json()
+  } catch (err) {
+    console.error("Failed to create project:", err)
+    return { ok: false, error: String(err) }
+  }
+}
