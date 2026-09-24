@@ -1,7 +1,7 @@
 # LoopDesk — 本地优先的团队循环工作区
 
 <p align="center">
-  <img src="assets/loopdesk-long-logo.png" alt="LoopDesk" width="480">
+  <img src="assets/loopdesk-logo.png" alt="LoopDesk" width="360">
 </p>
 
 <p align="center">
