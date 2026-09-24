@@ -238,3 +238,99 @@ export async function createProject(payload: {
     return { ok: false, error: String(err) }
   }
 }
+
+/* ============================================================
+ * Phase 2 Extended Endpoints: PTY, Connectors, Templates & Assets
+ * ============================================================ */
+
+export interface PTYSessionCreatePayload {
+  session_id: string;
+  command: string[];
+  workdir?: string;
+}
+
+export interface FlowStepPayload {
+  template_id: "issue-fix" | "pr-commit" | "auto-research";
+  issue_id?: string;
+  title?: string;
+  role?: string;
+  output?: string;
+  branch?: string;
+  commits?: Array<{ hash: string; message: string; author: string }>;
+  topic?: string;
+  notes?: string;
+  score?: number;
+}
+
+export async function createPTYSession(payload: PTYSessionCreatePayload, authToken?: string) {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (authToken) {
+    headers["Authorization"] = `Bearer ${authToken}`;
+  }
+  const res = await fetch(`${API_BASE}/orchestration/pty`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+  return res.json();
+}
+
+export async function readPTYSession(sessionId: string) {
+  const res = await fetch(`${API_BASE}/orchestration/pty/${sessionId}/read`);
+  return res.json();
+}
+
+export async function writePTYSession(sessionId: string, input: string) {
+  const res = await fetch(`${API_BASE}/orchestration/pty/${sessionId}/write`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ input }),
+  });
+  return res.json();
+}
+
+export async function fetchConnectorTasks(source: "jira" | "plane", token: string, baseUrl?: string, projectId?: string) {
+  const params = new URLSearchParams({ source });
+  if (baseUrl) params.append("base_url", baseUrl);
+  if (projectId) params.append("project_id", projectId);
+
+  const res = await fetch(`${API_BASE}/connectors/tasks?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+}
+
+export async function fetchConnectorDoc(docId: string, token: string, baseUrl?: string) {
+  const params = new URLSearchParams({ doc_id: docId });
+  if (baseUrl) params.append("base_url", baseUrl);
+
+  const res = await fetch(`${API_BASE}/connectors/knowledge?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return res.json();
+}
+
+export async function listMarketplaceAssets(role?: string) {
+  const params = new URLSearchParams({ root: "." });
+  if (role) params.append("role", role);
+  const res = await fetch(`${API_BASE}/assets?${params.toString()}`);
+  return res.json();
+}
+
+export async function distributeAsset(assetId: string, targetPath: string) {
+  const res = await fetch(`${API_BASE}/assets/distribute`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ asset_id: assetId, target_path: targetPath, repo_root: "." }),
+  });
+  return res.json();
+}
+
+export async function executeTemplateStep(payload: FlowStepPayload) {
+  const res = await fetch(`${API_BASE}/templates/execute`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return res.json();
+}

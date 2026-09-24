@@ -274,12 +274,16 @@ const btnPrimary = (disabled?: boolean): React.CSSProperties => ({
   height: 36,
   padding: '0 18px',
   borderRadius: 8,
-  background: disabled ? 'var(--c-chip)' : 'var(--c-accent)',
+  background: disabled ? 'var(--c-chip)' : '#34D399',
   border: 'none',
   color: disabled ? 'var(--c-tm)' : '#07090D',
   fontSize: 13,
   fontWeight: 600,
   cursor: disabled ? 'not-allowed' : 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  boxShadow: disabled ? 'none' : '0 1px 3px rgba(0,0,0,0.3)',
 })
 
 export function AddProjectModal({
@@ -419,7 +423,18 @@ export function AddProjectModal({
           <button style={btnGhost()} onClick={onClose} disabled={submitting}>
             取消
           </button>
-          <button style={btnPrimary()} onClick={handleSubmit} disabled={submitting}>
+          <button
+            style={{
+              ...btnPrimary(submitting),
+              background: '#34D399',
+              color: '#07090D',
+              cursor: submitting ? 'not-allowed' : 'pointer',
+              fontWeight: 600,
+              border: 'none',
+            }}
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
             {submitting ? '创建中...' : '确认创建项目'}
           </button>
         </div>
@@ -432,16 +447,20 @@ export function NewTaskModal({
   onClose,
   onConfirm,
   onNavigateSettings,
+  onProjectCreated,
+  initialProjectId = 'default',
 }: {
   onClose: () => void
-  onConfirm: () => void
+  onConfirm: (createdTask: any, projectId: string) => void
   onNavigateSettings?: () => void
+  onProjectCreated?: (newProj: any) => void
+  initialProjectId?: string
 }) {
   const [projects, setProjects] = useState<any[]>([])
-  const [selectedProjectId, setSelectedProjectId] = useState<string>('default')
+  const [selectedProjectId, setSelectedProjectId] = useState<string>(initialProjectId)
   const [addProjectOpen, setAddProjectOpen] = useState(false)
   const [selectedTpl, setSelectedTpl] = useState(TASK_TEMPLATES[0].id)
-  const [taskDesc, setTaskDesc] = useState(NEW_TASK_DEFAULTS.taskDesc)
+  const [taskDesc, setTaskDesc] = useState(NEW_TASK_DEFAULTS.desc)
   const [submitting, setSubmitting] = useState(false)
   const [validation, setValidation] = useState<{ ok: boolean; reason?: string; error?: string } | null>(null)
 
@@ -496,15 +515,18 @@ export function NewTaskModal({
     if (isBlocked) return
     setSubmitting(true)
     try {
-      await fetch(`/api/v1/projects/${selectedProjectId}/tasks`, {
+      const res = await fetch(`/api/v1/projects/${selectedProjectId}/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          intent: taskDesc.trim(),
-          template_id: selectedTpl,
+          title: taskDesc.trim() || '未命名任务',
+          intent: taskDesc.trim() || '未命名任务',
+          template: selectedTpl,
+          status: 'planned',
         }),
       })
-      onConfirm()
+      const data = await res.json()
+      onConfirm(data.task, selectedProjectId)
       onClose()
     } catch (e) {
       console.error('Failed to create task', e)
@@ -622,9 +644,9 @@ export function NewTaskModal({
                     >
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <span style={{ fontSize: 13, fontWeight: 600, color: sel ? 'var(--c-accent)' : 'var(--c-tp)' }}>
-                          {t.title}
+                          {t.name}
                         </span>
-                        {t.isFixed && (
+                        {t.id !== "free" && (
                           <span style={{ fontSize: 10, padding: '1px 5px', borderRadius: 4, background: 'var(--c-surface)', color: 'var(--c-tm)' }}>
                             固定
                           </span>
@@ -711,8 +733,10 @@ export function NewTaskModal({
             </button>
             <button
               style={{
-                ...btnPrimary(),
-                ...(isBlocked ? { opacity: 0.5, cursor: 'not-allowed', background: 'var(--c-border)' } : {}),
+                ...btnPrimary(!!isBlocked || submitting),
+                ...(isBlocked
+                  ? { opacity: 0.5, cursor: 'not-allowed', background: 'var(--c-border)', color: 'var(--c-tm)' }
+                  : { background: '#34D399', color: '#07090D', cursor: 'pointer', fontWeight: 600, border: 'none' }),
               }}
               onClick={handleSubmit}
               disabled={submitting || !!isBlocked}
@@ -729,8 +753,10 @@ export function NewTaskModal({
         <AddProjectModal
           onClose={() => setAddProjectOpen(false)}
           onConfirm={(newProj) => {
+            setAddProjectOpen(false)
             loadProjects()
             setSelectedProjectId(newProj.id)
+            if (onProjectCreated) onProjectCreated(newProj)
           }}
         />
       )}

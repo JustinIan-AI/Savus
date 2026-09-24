@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { ChevronDown, FolderIcon, SearchIcon } from './icons'
+import { ChevronDown, FolderIcon } from './icons'
 
 /* Top Bar — 56px, 20px padding, hairline bottom rule.
-   Search 296px (narrowed from 320 so the avatar is no longer pushed
-   under the inspector); agent pills 30px tall with a full 15px radius. */
+   Search 296px; agent pills 30px tall with a full 15px radius. */
 
 function Pill({ dot, name, nameTone, status }: { dot: string; name: string; nameTone: string; status: string }) {
   return (
@@ -27,9 +26,20 @@ function Pill({ dot, name, nameTone, status }: { dot: string; name: string; name
   )
 }
 
-export function TopBar() {
+export function TopBar({
+  projects = [],
+  currentProjectId,
+  onSelectProject,
+}: {
+  projects?: Array<{ id: string; name: string; mode?: string }>
+  currentProjectId?: string
+  onSelectProject?: (id: string) => void
+}) {
   const [projectMenuOpen, setProjectMenuOpen] = useState(false)
-  const [currentProject, setCurrentProject] = useState('Acme Platform')
+  
+  const currentProjObj = projects.find((p) => p.id === currentProjectId)
+  const currentProjectName = currentProjObj?.name ?? 'Acme Platform'
+
   return (
     <header
       style={{
@@ -60,7 +70,7 @@ export function TopBar() {
           }}
         >
           <FolderIcon size={16} style={{ color: 'var(--c-ts)' }} />
-          <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--c-tp)' }}>{currentProject}</span>
+          <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--c-tp)' }}>{currentProjectName}</span>
           <ChevronDown size={14} style={{ color: 'var(--c-ts)' }} />
         </button>
 
@@ -70,7 +80,7 @@ export function TopBar() {
               position: 'absolute',
               top: 40,
               left: 0,
-              width: 200,
+              width: 220,
               background: 'var(--c-surface)',
               boxShadow: '0 8px 24px rgba(0,0,0,0.25), inset 0 0 0 1px var(--c-chip)',
               borderRadius: 8,
@@ -81,67 +91,60 @@ export function TopBar() {
               gap: 2,
             }}
           >
-            {['Acme Platform', 'LoopDesk Core', 'Savus Runtime'].map((proj) => (
-              <button
-                key={proj}
-                onClick={() => {
-                  setCurrentProject(proj)
-                  setProjectMenuOpen(false)
-                }}
-                style={{
-                  height: 32,
-                  padding: '0 10px',
-                  borderRadius: 6,
-                  display: 'flex',
-                  alignItems: 'center',
-                  fontSize: 13,
-                  fontWeight: proj === currentProject ? 500 : 400,
-                  color: proj === currentProject ? 'var(--c-tp)' : 'var(--c-ts)',
-                  background: proj === currentProject ? 'var(--c-selected)' : 'transparent',
-                  textAlign: 'left',
-                  cursor: 'pointer',
-                }}
-              >
-                {proj}
-              </button>
-            ))}
+            {(projects.length > 0
+              ? projects
+              : [
+                  { id: 'default', name: 'Acme Platform' },
+                  { id: 'nimbus', name: 'Nimbus CLI' },
+                  { id: 'atlas', name: 'Atlas Gateway' },
+                ]
+            ).map((proj) => {
+              const isSelected = proj.id === currentProjectId || proj.name === currentProjectName
+              return (
+                <button
+                  key={proj.id}
+                  onClick={() => {
+                    if (onSelectProject) onSelectProject(proj.id)
+                    setProjectMenuOpen(false)
+                  }}
+                  style={{
+                    height: 32,
+                    padding: '0 10px',
+                    borderRadius: 6,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    fontSize: 13,
+                    fontWeight: isSelected ? 500 : 400,
+                    color: isSelected ? 'var(--c-tp)' : 'var(--c-ts)',
+                    background: isSelected ? 'var(--c-selected)' : 'transparent',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {proj.name}
+                  </span>
+                  {proj.mode && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        padding: '1px 4px',
+                        borderRadius: 3,
+                        background: 'var(--c-chip)',
+                        color: 'var(--c-tm)',
+                        marginLeft: 6,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {proj.mode}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
           </div>
         )}
-      </div>
-
-      {/* search */}
-      <div
-        style={{
-          width: 296,
-          height: 34,
-          borderRadius: 8,
-          background: 'var(--c-surface)',
-          boxShadow: 'inset 0 0 0 1px var(--c-chip)',
-          padding: '0 12px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          flexShrink: 0,
-        }}
-      >
-        <SearchIcon size={16} style={{ color: 'var(--c-tm)' }} />
-        <span style={{ fontSize: 13, color: 'var(--c-tm)', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden' }}>
-          搜索任务、资产或 agent…
-        </span>
-        <span
-          style={{
-            fontFamily: 'var(--f-mono)',
-            fontSize: 11,
-            color: 'var(--c-ts)',
-            background: 'var(--c-rail)',
-            boxShadow: 'inset 0 0 0 1px var(--c-kbd)',
-            borderRadius: 5,
-            padding: '1px 4px',
-            flexShrink: 0,
-          }}
-        >
-          Ctrl K
-        </span>
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }} />

@@ -92,3 +92,6 @@ src/loopdesk/squilla_router/models/**/*.bin
 src/loopdesk/squilla_router/models/**/*.onnx
 src/loopdesk/squilla_router/models/**/*.pkl
 src/loopdesk/squilla_router/models/**/*.joblib
+
+# Design & Preflight generated artifacts
+.preflight/

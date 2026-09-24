@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { TopBar } from '../components/TopBar'
 import { ConversationDock } from '../components/ConversationDock'
 import { CloseIcon, PlusIcon } from '../components/icons'
@@ -7,11 +7,16 @@ import {
   cardsInColumn,
   CARD_STATE_TEXT,
   CARD_STATE_COLOR,
+  STATUS_BADGE_TEXT,
+  STATUS_BADGE_COLOR,
   AGENT_COLOR,
   CARD_ACTIONS,
   INSPECTOR_GROUP_RULES,
+  TASK_STATUS_OPTIONS,
+  SUBMIT_REVIEW_STATUS,
   inspectorView,
   taskById,
+  taskStatusOf,
   type CardActionId,
   type Deliverable,
   type DetailAnchor,
@@ -39,6 +44,10 @@ const TONE: Record<string, string> = {
 /** 选中详情时的回调：卡片 id + 详情页里要滚到的区块。 */
 export type OpenTask = (cardId: string, anchor?: DetailAnchor) => void
 
+/** 「状态 ▾」菜单的实测高度（6 项 × 28px + 内边距 ≈ 190px）+ 余量。
+    低于这个空间就向上弹，见 Card 里的 openMenu。 */
+const STATUS_MENU_CLEARANCE = 202
+
 /** Agent 芯片底色跟随 agent 色，claude 一档与画布样例逐字一致。 */
 const AGENT_WELL: Record<string, string> = {
   claude: 'var(--c-selected)',
@@ -52,21 +61,62 @@ function Card({
   actions,
   onSelect,
   onAction,
+  onSetStatus,
 }: {
   id: string
   selected: boolean
   actions?: { id: CardActionId; label: string; primary?: boolean }[]
   onSelect: () => void
-  /** 动作按钮的落点 —— 目前统一汇到审批门裁决模态。 */
+  /** 动作按钮的落点 —— 裁决类进模态，其余直接走 PATCH。 */
   onAction: (action: CardActionId) => void
+  /** 「状态 ▾」选定后的落点：写后端，然后由 App 重新取快照。 */
+  onSetStatus: (status: string) => void
 }) {
   const t = taskById(id)
+  /* 状态下拉自己管开合：它只影响这一张卡，不该让整个看板重渲染。
+     向上还是向下弹由按钮的视口位置决定 —— 看板行是 overflow:hidden，
+     照固定方向弹会让最后一张卡的菜单被裁掉。 */
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuUp, setMenuUp] = useState(false)
+  const actionsRef = useRef<HTMLDivElement | null>(null)
+  const toggleRef = useRef<HTMLButtonElement | null>(null)
+  const cardRef = useRef<HTMLDivElement | null>(null)
+  const currentStatus = taskStatusOf(id)
+
+  useEffect(() => {
+    if (selected && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  }, [selected])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const onDocMouseDown = (e: MouseEvent) => {
+      if (!actionsRef.current?.contains(e.target as Node)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', onDocMouseDown)
+    return () => document.removeEventListener('mousedown', onDocMouseDown)
+  }, [menuOpen])
+
+  const openMenu = () => {
+    const btn = toggleRef.current
+    const column = btn?.closest('[data-column]') as HTMLElement | null
+    const rect = btn?.getBoundingClientRect()
+    /* 装在列里才不会被裁：看板行是 overflow:hidden，按视口高度判断会让
+       靠下的卡片弹出一个下半截被切掉的菜单。以**所在列的底边**为准，
+       装不下就向上弹。 */
+    const limit = column ? column.getBoundingClientRect().bottom : window.innerHeight
+    setMenuUp(!!rect && rect.bottom + STATUS_MENU_CLEARANCE > limit)
+    setMenuOpen(true)
+  }
   return (
     <div
       onClick={onSelect}
+      ref={cardRef}
       /* 纯观测钩子（不产生任何像素）：端到端走查据此定位到具体卡片。 */
       data-card-id={id}
       style={{
+        position: 'relative',
         width: '100%',
         borderRadius: 10,
         background: selected ? 'var(--c-selected)' : 'var(--c-surface)',
@@ -110,26 +160,46 @@ function Card({
         <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--c-blue)' }}>{t.branch}</span>
       </div>
 
-      <div style={{ fontSize: 11, color: CARD_STATE_COLOR[t.state], lineHeight: '13px' }}>
-        {CARD_STATE_TEXT[t.state]}
-      </div>
+      {(() => {
+        const rawStatus = taskStatusOf(t.id)
+        const badgeText = rawStatus ? (STATUS_BADGE_TEXT[rawStatus] ?? CARD_STATE_TEXT[t.state]) : CARD_STATE_TEXT[t.state]
+        const badgeColor = rawStatus ? (STATUS_BADGE_COLOR[rawStatus] ?? CARD_STATE_COLOR[t.state]) : CARD_STATE_COLOR[t.state]
+        return (
+          <div style={{ fontSize: 11, color: badgeColor, lineHeight: '13px' }}>
+            {badgeText}
+          </div>
+        )
+      })()}
 
-      {/* 任务管理动作 — 提交评审 / 状态更新，或通过 / 打回 */}
+      {/* 任务管理动作 — 提交评审 / 状态下拉，或通过 / 打回 */}
       {actions && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div ref={actionsRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6 }}>
           {actions.map((a) => (
             <button
               key={a.label}
-              onClick={() => onAction(a.id)}
+              ref={a.id === 'set-status' ? toggleRef : undefined}
+              data-action={a.id}
+              aria-expanded={a.id === 'set-status' ? menuOpen : undefined}
+              onClick={() => {
+                if (a.id === 'set-status') {
+                  if (menuOpen) setMenuOpen(false)
+                  else openMenu()
+                  return
+                }
+                onAction(a.id)
+              }}
               style={{
                 height: 26,
                 borderRadius: 6,
                 padding: '0 10px',
                 background: a.primary ? 'var(--c-selected)' : 'var(--c-rail)',
-                boxShadow: `inset 0 0 0 1px ${a.primary ? 'var(--c-emerald-edge)' : 'var(--c-chip)'}`,
+                boxShadow: `inset 0 0 0 1px ${
+                  a.primary || (a.id === 'set-status' && menuOpen) ? 'var(--c-emerald-edge)' : 'var(--c-chip)'
+                }`,
                 display: 'flex',
                 alignItems: 'center',
                 flexShrink: 0,
+                cursor: 'pointer',
               }}
             >
               <span
@@ -144,6 +214,78 @@ function Card({
               </span>
             </button>
           ))}
+
+          {/* 状态下拉 —— 值与后端 LoopWorkspaceStatus 同名，选完即 PATCH。 */}
+          {menuOpen && (
+            <div
+              data-testid={`status-menu-${id}`}
+              style={{
+                position: 'absolute',
+                ...(menuUp ? { bottom: 32 } : { top: 32 }),
+                left: 0,
+                width: 152,
+                background: 'var(--c-surface)',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.25), inset 0 0 0 1px var(--c-chip)',
+                borderRadius: 8,
+                padding: 6,
+                zIndex: 120,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+              }}
+            >
+              {TASK_STATUS_OPTIONS.map((o) => {
+                const current = currentStatus === o.value
+                return (
+                  <button
+                    key={o.value}
+                    data-status-option={o.value}
+                    data-current={current ? 'true' : 'false'}
+                    onClick={() => {
+                      setMenuOpen(false)
+                      onSetStatus(o.value)
+                    }}
+                    style={{
+                      height: 28,
+                      padding: '0 10px',
+                      borderRadius: 6,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                      background: current ? 'var(--c-selected)' : 'transparent',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontFamily: 'var(--f-mono)',
+                        fontSize: 11,
+                        color: 'var(--c-emerald)',
+                        lineHeight: '14px',
+                        width: 8,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {current ? '·' : ''}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: current ? 500 : 400,
+                        color: current ? 'var(--c-tp)' : 'var(--c-ts)',
+                        lineHeight: '15px',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {o.label}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -184,6 +326,7 @@ function Column({
   selectedId,
   onSelect,
   onAction,
+  onSetStatus,
 }: {
   id: TaskColumnId
   title: string
@@ -193,6 +336,7 @@ function Column({
   selectedId: string
   onSelect: (cardId: string) => void
   onAction: (cardId: string, action: CardActionId) => void
+  onSetStatus: (cardId: string, status: string) => void
 }) {
   /* 列成员 = 画布种子 ⊕ 后端状态改写 ⊕ 后端追加，见 data.ts 的叠加层。 */
   const cards = cardsInColumn(id)
@@ -241,37 +385,53 @@ function Column({
 
       {id === 'todo' && <NewTaskTile onNewTask={onNewTask} />}
 
-      {cards.length === 0 ? (
-        <div
-          style={{
-            padding: '24px 12px',
-            textAlign: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 8,
-            color: 'var(--c-tm)',
-            border: '1px dashed var(--c-border)',
-            borderRadius: 8,
-          }}
-        >
-          <span style={{ fontSize: 20 }}>📭</span>
-          <span style={{ fontSize: 12, color: 'var(--c-ts)' }}>暂无任务</span>
-          <span style={{ fontSize: 11, color: 'var(--c-tm)' }}>点击上方 + 发起新循环</span>
-        </div>
-      ) : (
-        cards.map((cid) => (
-          <Card
-            key={cid}
-            id={cid}
-            selected={cid === selectedId}
-            actions={CARD_ACTIONS[id]}
-            onSelect={() => onSelect(cid)}
-            onAction={(a) => onAction(cid, a)}
-          />
-        ))
-      )}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          paddingRight: 2,
+          paddingBottom: 8,
+          scrollBehavior: 'smooth',
+        }}
+      >
+        {cards.length === 0 ? (
+          <div
+            style={{
+              padding: '24px 12px',
+              textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              color: 'var(--c-tm)',
+              border: '1px dashed var(--c-border)',
+              borderRadius: 8,
+            }}
+          >
+            <span style={{ fontSize: 20 }}>📭</span>
+            <span style={{ fontSize: 12, color: 'var(--c-ts)' }}>暂无任务</span>
+            <span style={{ fontSize: 11, color: 'var(--c-tm)' }}>点击上方 + 发起新循环</span>
+          </div>
+        ) : (
+          cards.map((cid) => (
+            <Card
+              key={cid}
+              id={cid}
+              selected={cid === selectedId}
+              actions={CARD_ACTIONS[id]}
+              onSelect={() => onSelect(cid)}
+              onAction={(a) => onAction(cid, a)}
+              onSetStatus={(s) => onSetStatus(cid, s)}
+            />
+          ))
+        )}
+      </div>
     </div>
   )
 }
@@ -934,6 +1094,10 @@ export function TaskBoard({
   selectedId,
   onSelect,
   onGate,
+  onSetStatus,
+  projects = [],
+  currentProjectId,
+  onSelectProject,
 }: {
   onNewTask: () => void
   onOpenTask: OpenTask
@@ -941,6 +1105,11 @@ export function TaskBoard({
   onSelect: (cardId: string) => void
   /** 卡片动作 → 打开审批门裁决模态，并预选一个裁决（打回 = 驳回）。 */
   onGate: (cardId: string, initialDecision: 'approved' | 'denied') => void
+  /** 卡片动作「提交评审」/「状态 ▾」→ PATCH 状态，不经过裁决模态。 */
+  onSetStatus: (cardId: string, status: string) => void
+  projects?: Array<{ id: string; name: string; mode?: string }>
+  currentProjectId?: string
+  onSelectProject?: (id: string) => void
 }) {
   const [collapsed, setCollapsed] = useState(false)
 
@@ -958,7 +1127,7 @@ export function TaskBoard({
   return (
     <>
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--c-base)' }}>
-        <TopBar />
+        <TopBar projects={projects} currentProjectId={currentProjectId} onSelectProject={onSelectProject} />
 
         <div
           style={{
@@ -980,7 +1149,17 @@ export function TaskBoard({
               onNewTask={onNewTask}
               selectedId={selectedId}
               onSelect={onSelect}
-              onAction={(cid, action) => onGate(cid, action === 'gate-deny' ? 'denied' : 'approved')}
+              onSetStatus={onSetStatus}
+              /* 裁决类动作进模态；「提交评审」是纯状态移动，直接 PATCH。 */
+              onAction={(cid, action) => {
+                if (action === 'start-task') {
+                  onSetStatus(cid, 'active')
+                } else if (action === 'submit-review') {
+                  onSetStatus(cid, SUBMIT_REVIEW_STATUS)
+                } else {
+                  onGate(cid, action === 'gate-deny' ? 'denied' : 'approved')
+                }
+              }}
             />
           ))}
         </div>

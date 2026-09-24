@@ -64,13 +64,19 @@ LoopDesk 是面向独立开发者的个人循环工作区（Personal Loop Worksp
   - 交互：**单选选中**（驱动右栏更新上下文，保持中栏不变）；**双击或点击「查看详情」**（中栏转入 C5 任务详情页）。
 - **C3 筛选与搜索工具条 (Board Filter Bar)**：支持模糊搜索标题、按 Agent 筛选、按模板分类、按标签过滤。
 - **C4 模板化新建任务面板 (New Task Modal)**：
-  - 项目归属（缺省当前活动项目）。
-  - 2×2 模板卡片选择：
+  - **项目归属与模式感知（Project Selector & Mode Badge）**：
+    - 下拉选择归属项目，展示模式标记（`[Local]` 本地工作区 vs `[Remote]` 远端 Git 仓库）；
+    - 支持点击「+ 关联新项目」，提供本地文件夹路径绑定或 Git URL 输入。
+  - **2×2 模板卡片选择**：
     - `issue-fix`：缺陷修复与 TDD 闭环（绑定 Issue 链接/编号、重现要求）。
     - `pr-commit`：特性交付与 PR 提交（分支名、目标分支、变更说明）。
     - `auto-research`：技术方案调研与架构分析（调研深度、输出报告格式）。
     - `free-loop`：自由意图循环任务。
-  - 高级选项（可折叠）：模型选择、Token 预算上限、超时阈值、指定 Agent。
+  - **远端任务与 MCP 前置拦截 (Pre-flight Guardrail MUST)**：
+    - 当选择远端项目，或任务模板指定接入外部工单（JIRA / Plane）时，系统自动探测对应 MCP 连接状态；
+    - **未挂载强拦截**：若 JIRA/Plane MCP 未连接，面板渲染琥珀色阻断卡片，禁用「开始任务」按钮，并高亮展示「去配置连接器 ➔」一键跳转至 `SettingsMcp`；
+    - **挂载就绪**：激活 Issue 智能匹配搜索，拉取归属于当前开发者的待办工单。
+  - **高级选项（可折叠）**：模型选择、Token 预算上限、超时阈值、指定 Agent。
 - **C5 任务详情全景视图 (Task Detail View - 第 10 屏)**：
   - **任务头部 (Header)**：返回看板面包屑、任务编号、标题、生命周期状态芯片、快捷操作（继续/暂停/终止/重试）。
   - **评审包 8 段契约 (Review Packet)**：
@@ -147,12 +153,123 @@ POST   /api/v1/projects/{project_id}/assets/install # 安装/启用指定技能�
 
 ---
 
-## 5. UI 状态机与容灾设计
+## 5. 任务状态转移模型与 UI 状态机设计
 
-1. **Gate 阻断状态机**：
-   - `RUNNING` ➔ 触发风险策略 / PR 合并前 ➔ `BLOCKED_ON_GATE`（卡片入第 3 列，触发红点，右栏亮起 R4 决策台）。
-   - 用户点击 `Approve` ➔ `RUNNING (Finalizing)` ➔ 合流成功 ➔ `COMPLETED`。
-   - 用户点击 `Deny` ➔ `RUNNING (Revising)` ➔ 携带驳回意见退回 Maker 泳道重新编写测试。
-2. **网络断连与心跳重连**：
+### 5.1 任务状态转移时序与生命周期全景
+
+LoopDesk 任务生命周期围绕**四列看板**（待办 `todo`、进行中 `doing`、评审中 `review`、已完成 `done`）与 **6 个业务底层状态**（`planned`、`active`、`in_review`、`blocked`、`completed`、`canceled`）运转：
+
+```
+                    ┌───────────────────────── [取消 canceled] ──────────────────────────┐
+                    │                                                                    │
+                    ▼                                                                    │
+┌──────────────┐ 开始执行   ┌──────────────┐ 提交评审   ┌──────────────┐ 审批通过   ┌──────────────┐
+│  待办 todo   │ ────────> │ 进行中 doing │ ────────> │ 评审中 review│ ────────> │ 已完成 done  │
+│ (planned)    │           │ (active)     │           │ (in_review)  │           │ (completed/  │
+└──────────────┘           │              │           └──────────────┘           │  canceled)   │
+       │                   │              │                  │                   └──────────────┘
+       │                   │              │                  │ 打回需返工 (blocked)     ▲
+       │                   │              │ <────────────────┘                          │
+       │                   │ (blocked     │                                             │
+       │                   │ 阻塞需返工)  │ ────────────────────── 修复完成重新提交 ────┘
+       │                   └──────────────┘
+       └────────────────────────────────────────────────────────────────────────────────┘
+```
+
+> **状态流转关键原则**：
+> 1. **「评审中」栏（用于决策）**：只承载待人工或规则决裁的任务（`in_review`），卡片动作专注于「通过 / 打回」；
+> 2. **「进行中」栏（用于 Agent 执行与处理）**：承载正在执行的任务（`active`）以及被裁决打回后**「阻塞需返工」（`blocked`）**的任务，便于 Agent 挂载上下文、定位测试失败并直接开展编码与修复。
+
+#### 5.1.1 状态与看板栏映射及业务徽标规范
+
+| 业务状态 (`status`) | 看板栏位 (`TaskColumnId`) | 内部卡片态 (`CardState`) | 卡片状态标签文案 | 颜色标识 | 可用交互动作 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `planned` | `todo` (待办) | `todo` | `待办 · 未启动` | 蓝色 (`--c-blue`) | `开始执行` (转 active)、`状态 ▾` 下拉 |
+| `active` | `doing` (进行中) | `handoff` | `进行中 · 可续跑` | 翡翠绿 (`--c-emerald`) | `提交评审` (转 in_review)、`状态 ▾` 下拉 |
+| `blocked` | `doing` (进行中) | `handoff` | `阻塞 · 需返工` | 琥珀黄 (`--c-amber`) | `提交评审` (修复后重新送审)、`状态 ▾` 下拉 |
+| `in_review` | `review` (评审中) | `gate` | `评审中 · 等待确认` | 琥珀黄 (`--c-amber`) | `通过` (转 completed)、`打回` (转 blocked 并丢回进行中) |
+| `completed` | `done` (已完成) | `delivered` | `已交付 · run log 完整`| 灰色 (`--c-ts`) | 终态，只读查看，支持重新激活 |
+| `canceled` | `done` (已完成) | `delivered` | `已取消 · 任务终止` | 柔和灰 (`--c-tm`) | 终态归档，移入已完成栏 |
+
+---
+
+### 5.2 任务状态转移时序图 (Mermaid Sequence)
+
+以下时序完整刻画了用户、前端看板 (TaskBoard)、网关状态路由 (Tasks API) 以及后端持久化存储 (LoopWorkspace State) 之间的调用闭环：
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as 研发人员/Operator
+    participant UI as 前端看板 (TaskBoard/Inspector)
+    participant GW as 网关接口 (Gateway /tasks)
+    participant Store as 任务控制面 (LOOP-STATE / Memory)
+
+    Note over User, Store: 阶段一：新建任务落地到待办栏
+    User->>UI: 点击「+ 新建任务」填写目标并提交
+    UI->>GW: POST /api/v1/projects/{proj_id}/tasks (intent, template)
+    GW->>Store: 创建任务 (status="planned")
+    Store-->>GW: 返回 Task 实体 (status="planned")
+    GW-->>UI: 200 OK (Task Payload)
+    UI->>UI: 触发 refresh() 并将任务放入「待办 (todo)」栏
+
+    Note over User, Store: 阶段二：待办转为进行中
+    alt 方式 A: 快速操作
+        User->>UI: 点击卡片动作「开始执行」
+        UI->>GW: PATCH /api/v1/tasks/{id} {"status": "active"}
+    else 方式 B: 状态下拉切换
+        User->>UI: 在「状态 ▾」菜单中选择「进行中」
+        UI->>GW: PATCH /api/v1/tasks/{id} {"status": "active"}
+    end
+    GW->>Store: 更新状态为 active，记录 transition_log
+    Store-->>GW: 返回已更新 Task
+    GW-->>UI: 200 OK
+    UI->>UI: 卡片从「待办」栏移入「进行中 (doing)」栏，文案更变「进行中 · 可续跑」
+
+    Note over User, Store: 阶段三：进行中转为评审中
+    User->>UI: 点击卡片动作「提交评审」
+    UI->>GW: PATCH /api/v1/tasks/{id} {"status": "in_review"}
+    GW->>Store: 更新状态为 in_review，触发 Check Gate 准备
+    Store-->>GW: 返回 Task (status="in_review")
+    GW-->>UI: 200 OK
+    UI->>UI: 卡片移入「评审中 (review)」栏，动作变为「通过 / 打回」
+
+    Note over User, Store: 阶段四：评审裁决与打回闭环
+    alt 审批通过 (Approve)
+        User->>UI: 点击「通过」打开裁决弹窗并确认
+        UI->>GW: POST /api/v1/tasks/{id}/gate/decision {"decision": "approved", "comment": "..."}
+        GW->>Store: 更新状态为 completed，落库 run_log
+        Store-->>GW: 返回已关单 Task
+        GW-->>UI: 200 OK
+        UI->>UI: 卡片移入「已完成 (done)」栏，状态标签变为「已交付」
+    else 审批打回 (Deny / Block - 丢入进行中供 Agent 处理)
+        User->>UI: 点击「打回」输入返工批注
+        UI->>GW: POST /api/v1/tasks/{id}/gate/decision {"decision": "denied", "comment": "..."}
+        GW->>Store: 更新状态为 blocked，记录打回原因并交由 Agent 处理
+        Store-->>GW: 返回 Task (status="blocked")
+        GW-->>UI: 200 OK
+        UI->>UI: 卡片从「评审中」直接丢入「进行中 (doing)」栏，状态标签标为「阻塞 · 需返工」，便于 Agent 接管执行
+    end
+
+    Note over User, Store: 阶段五：异常终止或主动取消 (Cancel)
+    User->>UI: 在任何阶段通过「状态 ▾」选择「已取消」
+    UI->>GW: PATCH /api/v1/tasks/{id} {"status": "canceled"}
+    GW->>Store: 状态更新为 canceled，冻结上下文与 quota
+    Store-->>GW: 返回已取消 Task
+    GW-->>UI: 200 OK
+    UI->>UI: 卡片自动移入「已完成 (done)」栏，状态标记为「已取消 · 任务终止」
+```
+
+---
+
+### 5.3 UI 容灾与交互边界
+
+1. **状态防抖与乐观更新机制**：
+   - 用户触发状态变更后，UI 乐观移动卡片并锁定动作栏；待网关返回或 SSE 下发确认后解除锁定。
+   - 若网关返回错误（如非法的状态跃迁），卡片弹回原列并展示 Toast 告警提示。
+2. **顶栏布局精简规范**：
+   - 移除原无实际检索逻辑且破坏三栏紧凑布局的「搜索框」组件。
+   - 顶栏专注保留「工作区/项目上下文快速选择器」、「Agent 运行健康指标」及「用户档案」三大核心控制元。
+3. **网络断连与心跳重连**：
    - SSE 连接中断时，顶部展示“正在重新连接状态流...”轻量提示，采用指数退避算法（1s, 2s, 4s... 30s）重试。
    - 保留上次已接收的本地状态缓存，不可闪烁为全屏白屏。

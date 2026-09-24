@@ -60,3 +60,118 @@ def test_gate_decision_endpoint(test_client: TestClient, tmp_path: Path):
     data = response.json()
     assert data["ok"] is True
     assert data["status"] in ["completed", "approved", "active"]
+
+
+def test_create_task_keeps_both_tasks(test_client: TestClient, tmp_path: Path):
+    """`current_work_id` is a cursor, so a second create must not eat the first."""
+    first = test_client.post(
+        "/api/v1/projects/default/tasks", json={"title": "A", "root": str(tmp_path)}
+    ).json()["task"]["id"]
+    second = test_client.post(
+        "/api/v1/projects/default/tasks", json={"title": "B", "root": str(tmp_path)}
+    ).json()["task"]["id"]
+
+    ids = [t["id"] for t in test_client.get(f"/api/v1/projects/default/tasks?root={tmp_path}").json()["tasks"]]
+    assert first in ids and second in ids
+
+
+def test_patch_task_moves_status(test_client: TestClient, tmp_path: Path):
+    task_id = test_client.post(
+        "/api/v1/projects/default/tasks", json={"title": "A", "root": str(tmp_path)}
+    ).json()["task"]["id"]
+
+    response = test_client.patch(
+        f"/api/v1/tasks/{task_id}", json={"status": "in_review", "root": str(tmp_path)}
+    )
+    assert response.status_code == 200
+    task = response.json()["task"]
+    assert task["status"] == "in_review"
+    assert task["gate_status"] == "pending"
+    assert task["title"] == "A"
+
+
+def test_patch_only_touches_supplied_fields(test_client: TestClient, tmp_path: Path):
+    task_id = test_client.post(
+        "/api/v1/projects/default/tasks", json={"title": "原标题", "root": str(tmp_path)}
+    ).json()["task"]["id"]
+
+    test_client.patch(f"/api/v1/tasks/{task_id}", json={"status": "completed", "root": str(tmp_path)})
+    assert test_client.get(
+        f"/api/v1/projects/default/tasks?root={tmp_path}"
+    ).json()["tasks"][0]["title"] == "原标题"
+
+
+def test_patch_materialises_a_canvas_only_card(test_client: TestClient, tmp_path: Path):
+    """Canvas cards exist only in the frontend, so a status move upserts them."""
+    response = test_client.patch(
+        "/api/v1/tasks/ACME-201",
+        json={"status": "in_review", "title": "画布卡片", "root": str(tmp_path)},
+    )
+    assert response.status_code == 200
+    assert response.json()["created"] is True
+
+
+def test_patch_rejects_unknown_status(test_client: TestClient, tmp_path: Path):
+    response = test_client.patch(
+        "/api/v1/tasks/ACME-201", json={"status": "nope", "root": str(tmp_path)}
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == "invalid_status"
+
+
+def test_patch_requires_at_least_one_field(test_client: TestClient, tmp_path: Path):
+    response = test_client.patch("/api/v1/tasks/ACME-201", json={"root": str(tmp_path)})
+    assert response.status_code == 400
+    assert response.json()["error"] == "no_fields"
+
+
+def test_malformed_body_is_rejected(test_client: TestClient, tmp_path: Path):
+    """A gateway that answers 200 to unparseable JSON hides every client bug."""
+    response = test_client.post(
+        "/api/v1/projects/default/tasks",
+        content=b"not-json",
+        headers={"Content-Type": "application/json"},
+        params={"root": str(tmp_path)},
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == "invalid_json"
+
+
+def test_gate_decision_rejects_unknown_verdict(test_client: TestClient, tmp_path: Path):
+    response = test_client.post(
+        "/api/v1/tasks/ACME-201/gate/decision", json={"decision": "maybe", "root": str(tmp_path)}
+    )
+    assert response.status_code == 400
+    assert response.json()["error"] == "invalid_decision"
+
+
+def test_tasks_are_scoped_to_their_project(test_client: TestClient, tmp_path: Path):
+    test_client.post("/api/v1/projects/default/tasks", json={"title": "默认项目", "root": str(tmp_path)})
+    test_client.post("/api/v1/projects/other/tasks", json={"title": "另一个项目", "root": str(tmp_path)})
+
+    default = test_client.get(f"/api/v1/projects/default/tasks?root={tmp_path}").json()
+    other = test_client.get(f"/api/v1/projects/other/tasks?root={tmp_path}").json()
+    unknown = test_client.get(f"/api/v1/projects/nope/tasks?root={tmp_path}").json()
+
+    assert [t["title"] for t in default["tasks"]] == ["默认项目"]
+    assert [t["title"] for t in other["tasks"]] == ["另一个项目"]
+    assert unknown["tasks"] == []
+
+
+def test_gate_decision_rejects_unverified_receipt(test_client: TestClient, tmp_path: Path):
+    # Operator approved but validation exit code is non-zero -> Evidence Gate must fail and return 422
+    response = test_client.post(
+        f"/api/v1/tasks/task-unverified/gate/decision?root={tmp_path}",
+        json={
+            "decision": "approved",
+            "comment": "LGTM but test actually failed",
+            "validation_command": "pytest",
+            "validation_exit_code": 1,
+            "validation_stdout": "FAILED test_something.py",
+        },
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert data["ok"] is False
+    assert data["failed_gate"] == "evidence"
+    assert "Evidence Gate failed" in data["error"]

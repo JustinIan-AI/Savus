@@ -20,6 +20,7 @@
 - [`features/tool-compression.md`](features/tool-compression.md) - 工具结果压缩与句柄。
 - [`prd/loopdesk-prd-v2.0.zh.md`](prd/loopdesk-prd-v2.0.zh.md) - **当前权威 PRD（v2.0 完整版）**：团队循环工作区、116 条能力清单、Codex 三栏前端清单。
 - [`plans/loopdesk-webui-design-spec.md`](plans/loopdesk-webui-design-spec.md) - **WebUI 设计规格 v2.0**（Codex 三栏范式）。
+- [`plans/2026-09-17-loopdesk-v2-phase-2-feature-breakdown.md`](plans/2026-09-17-loopdesk-v2-phase-2-feature-breakdown.md) - **第二阶段特性拆解方案**（Feature F6 ~ F10 特性驱动计划，覆盖长任务模板、资产分发、Agent 编排、系统集成与治理）。
 - [`prd/personal-loop-workspace-v1.0.zh.md`](prd/personal-loop-workspace-v1.0.zh.md) - 历史：v1.0 PRD（Desktop-first runtime、Web surface、IM remote control）。
 - [`prd/personal-loop-workspace.en.md`](prd/personal-loop-workspace.en.md) - 历史：v1.0 PRD 英文版。
 - [`features/loopdesk-v0.2-channel-adapter-feature-breakdown.md`](features/loopdesk-v0.2-channel-adapter-feature-breakdown.md) - 可选的 IM channel adapter 功能拆解。
@@ -56,6 +57,8 @@
 - [`research/loop-engineering.md`](research/loop-engineering.md) - `loop-engineering` 调研结论及对 LoopDesk 的方法论借鉴。
 - [`research/competitive-intel.md`](research/competitive-intel.md) - 竞品调研总览（Tutti/WeSight/Multica/Happier/cc-connect/Orca/Octos/Herdr/Proma 等）。
 - [`research/competitive-intel-multica.md`](research/competitive-intel-multica.md) - `multica-ai/multica` 最新版专项调研（v0.4.43，2026-09-11）：人机团队、Squads、Skills、Autopilots、26 种 runtime。
+- [`research/competitive-intel-tabtin.md`](research/competitive-intel-tabtin.md) - `tabtin-ai/TabTin` 竞品调研（2026-09-18）：**与 LoopDesk v2.0 定位重叠度最高的竞品之一**。团队级 Agent Harness + 协作工作台（398★/96 fork，AGPL-3.0 双授权）；Organization/Workspace/Agent/App/Device 五层概念、任务续接（上下文冻结）与交接包两种交接形态、Checkpoint 回退、credit 额度治理；技术路线为「重客户端 + 服务端 + Centrifugo 实时协作」，与 LoopDesk 四条护城河（零基础设施 local-first / 可移植 LOOP-STATE.json / 显式 Loop Engineering / git 原生分发）正面互补。含 7 次快照式提交与自证式审计的可信度提示。
+- [`research/competitive-intel-cumora.md`](research/competitive-intel-cumora.md) - `yetone/cumora` 竞品调研（2026-09-18）：**对多 agent 协调工程教训记录最完整的公开材料**。3.7k★/477 fork，MIT，327 提交、真实活跃协作开发。团队聊天形态（chat-first，agent 为一等成员）、Cloud Pod 与 BYOA 双路径（10 个引擎适配器，**已覆盖 claude/codex/pi**）、fail-closed 沙箱与凭证边界、统一 `llm_calls` 成本账本。含 `COORDINATION.md` 精读：triage 门、原子认领、seen-cursor 新鲜度门、hold-token「软门必须有成本」、15 条反模式、T1→T10 试验，以及引擎级计费陷阱（Gemini 缓存读 / Antigravity 累计值 / OpenCode 事件竞争）。
 - [`research/prd-optimization-suggestions.md`](research/prd-optimization-suggestions.md) - 基于调研与竞品分析的 PRD 优化建议（v1.1 → v1.2 输入）。
 - [`research/competitive-intel-octos.md`](research/competitive-intel-octos.md) - `octos-org/octos` 竞品调研：本地 runtime、goals/loops、MCP/ACP、channels、swarm。
 - [`research/octos-overview.md`](research/octos-overview.md) - `octos-org/.github` profile README 与 `octos-org/octos` 代码树调研摘要。

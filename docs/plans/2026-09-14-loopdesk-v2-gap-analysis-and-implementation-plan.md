@@ -115,6 +115,35 @@
 
 ---
 
+---
+
+### Feature F5: 项目管理与远端任务 MCP 前置强校验 (Project Modes & Pre-flight Guardrail)
+
+**业务价值**：打通项目独立生命周期管理（本地 Local 目录 vs 远端 Remote 仓库），建立远端任务创建时的 MCP 前置强拦截闭环，杜绝无上下文盲目执行。
+
+#### Task F5.1: 后端 Gateway 增加项目管理与 Pre-flight 校验 API
+- **责任范围**：`src/loopdesk/gateway/tasks.py`, `src/loopdesk/gateway/projects.py` (新增)
+- **Failing Test First**：
+  - 编写 `tests/test_gateway/test_project_routes.py`：
+    1. 测试项目创建（`POST /api/v1/projects`）：校验 `mode="local"` 绑定本地路径，`mode="remote"` 校验 Git URL 规范。
+    2. 测试远端任务创建前置校验（`POST /api/v1/projects/{id}/tasks/validate`）：
+       - 当项目/任务指定依赖 JIRA 且 JIRA MCP 未连接时，返回 `{"ok": false, "code": "MCP_REQUIRED", "required_connector": "jira", "message": "该远端任务依赖 JIRA MCP 连接器，当前未配置"}` 并拒绝创建；
+       - 当 JIRA MCP 已就绪时，校验通过允许创建。
+  - 运行 pytest 确认红灯，随后实现最小路由与校验逻辑。
+- **Stop Condition**：
+  - `GET /api/v1/projects` 能列出本地与远端项目；
+  - 远端任务创建校验能够准确阻断未挂载 MCP 的请求并返回标准拦截码。
+
+#### Task F5.2: 前端新建任务面板（C4）集成项目下拉与 MCP 依赖感知
+- **责任范围**：`frontend/src/overlays/Modals.tsx` (`NewTaskModal`)
+- **交互规范与验收标准**：
+  1. 「归属项目」字段升级为真实下拉选择框（展示 Project 名称与模式徽标：`[Local]` 或 `[Remote]`），并提供「+ 新建/关联项目」快捷入口；
+  2. 当用户选择远端项目或选择了外部工单模板时，界面触发状态探测；
+  3. 若检测到对应 JIRA/Plane MCP 未连接，在面板下方即时渲染琥珀色警示卡片：
+     > ⚠️ *当前选中的远端项目需挂载 JIRA MCP 连接器以同步工单。检测到服务未就绪。*
+     并高亮展示「去配置连接器 ➔」引导按钮，同时禁用「开始任务」提交按钮；
+  4. 点击引导按钮自动关闭任务弹窗并平滑切换路由至 `SettingsMcp` 界面。
+
 ### Feature F4: LoopX 控制面协同与 GitHub PR 自动化交付 (LoopX Delivery)
 
 **业务价值**：打通外部 Issue 到自动化 PR 的全流程闭环，形成严密工程自审与合流门禁。

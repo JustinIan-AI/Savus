@@ -14,18 +14,22 @@ import {
   AddConnectorModal,
   GateDecisionModal,
   NewTaskModal,
+  AddProjectModal,
   type NewTaskPayload,
 } from './overlays/Modals'
 import {
   DEFAULT_PROJECT_ID,
   createTask,
   fetchTasks,
+  fetchProjects,
+  createProject,
   submitGateDecision,
   subscribeToEvents,
   updateTask,
   type ApiTask,
+  type ProjectItem as ApiProject,
 } from './lib/api'
-import { DEFAULT_TASK_ID, setRuntimeTasks, taskById, type DetailAnchor, type NavKey } from './data'
+import { DEFAULT_TASK_ID, setRuntimeTasks, taskById, type DetailAnchor, type NavKey, type SessionRow, SESSIONS } from './data'
 import type { SettingsTab } from './screens/SettingsShell'
 
 /* ============================================================
@@ -58,32 +62,42 @@ export default function App() {
   /** 网关任务快照 —— 同时是「接线是否活着」的可观测面。 */
   const [tasks, setTasks] = useState<ApiTask[]>([])
   const [online, setOnline] = useState(false)
+  const [projects, setProjects] = useState<ApiProject[]>([])
+  const [currentProjectId, setCurrentProjectId] = useState<string>(DEFAULT_PROJECT_ID)
+  const [addProjectOpenStandalone, setAddProjectOpenStandalone] = useState(false)
 
   /** 拉一次任务快照。必须先灌叠加层再 setState —— 渲染时读的就是它。 */
-  const refresh = useCallback(async () => {
-    const snap = await fetchTasks(DEFAULT_PROJECT_ID)
-    setRuntimeTasks(snap.tasks)
+  const refreshProjects = useCallback(async () => {
+    const projectsList = await fetchProjects()
+    if (Array.isArray(projectsList)) {
+      setProjects(projectsList)
+    }
+    return { ok: true, projects: projectsList }
+  }, [])
+
+  const refresh = useCallback(async (projId?: string) => {
+    const targetProj = projId ?? currentProjectId
+    const snap = await fetchTasks(targetProj)
+    setRuntimeTasks(snap.tasks, targetProj)
     setTasks(snap.tasks)
     setOnline(snap.ok)
     return snap
-  }, [])
+  }, [currentProjectId])
 
   useEffect(() => {
-    void refresh()
-    /* 后端 SSE 事件总线：task_created / gate_decision_recorded 都会推过来，
-       收到就重新取快照，看板因此不需要本地推测状态。 */
+    void refresh(currentProjectId)
+    void refreshProjects()
     const stop = subscribeToEvents(
       () => {
-        void refresh()
+        void refresh(currentProjectId)
+        void refreshProjects()
       },
       () => {
-        /* EventSource 会自己重连。唯一要处理的错误是「连上了但服务没了」，
-           此时下一次 refresh 会把 online 打回 false。 */
         setOnline(false)
       }
     )
     return stop
-  }, [refresh])
+  }, [refresh, refreshProjects, currentProjectId])
 
   const isSettings = nav.startsWith('settings')
   const settingsTab = (isSettings ? nav : 'settings-agent') as SettingsTab
@@ -104,12 +118,34 @@ export default function App() {
     setGateModal({ id: cardId, title: taskById(cardId)?.title ?? cardId, decision })
   }
 
-  /** POST 新建任务，随后重新取快照，并选中刚建出来的那条。 */
-  const handleCreateTask = async (payload: NewTaskPayload) => {
+  const handleSelectProject = async (projId: string) => {
+    setCurrentProjectId(projId)
+    const snap = await refresh(projId)
+    if (snap && snap.tasks && snap.tasks.length > 0) {
+      setSelectedId(snap.tasks[0].id)
+    } else if (projId === 'default') {
+      setSelectedId(DEFAULT_TASK_ID)
+    }
+  }
+
+  const handleCreateProject = async (newProj: any) => {
+    await refreshProjects()
+    if (newProj && newProj.id) {
+      handleSelectProject(newProj.id)
+    }
+  }
+
+  /** 任务创建成功回调：刷新快照、切换到对应项目并选中新卡片。 */
+  const handleCreateTask = async (createdTask: any, projId: string) => {
     setNewTaskOpen(false)
-    const created = await createTask(DEFAULT_PROJECT_ID, payload)
-    await refresh()
-    if (created && created.id) setSelectedId(created.id)
+    const targetProj = projId || currentProjectId || DEFAULT_PROJECT_ID
+    if (targetProj !== currentProjectId) {
+      setCurrentProjectId(targetProj)
+    }
+    await refresh(targetProj)
+    if (createdTask && createdTask.id) {
+      setSelectedId(createdTask.id)
+    }
   }
 
   /** POST 审批门裁决，随后重新取快照 —— 卡片状态与列位由后端说话。 */
@@ -118,7 +154,7 @@ export default function App() {
     setGateModal(null)
     if (!target) return
     await submitGateDecision(target.id, { decision, comment, title: target.title })
-    await refresh()
+    await refresh(currentProjectId)
   }
 
   /** PATCH 任务状态（提交评审 / 状态下拉），随后重新取快照。
@@ -128,10 +164,26 @@ export default function App() {
       否则卡片会在下次取快照时跌回原列。带了标题就是为了这一步。 */
   const handleSetStatus = async (cardId: string, status: string) => {
     const card = taskById(cardId)
-    const res = await updateTask(cardId, { status, title: card?.title })
+    const res = await updateTask(cardId, { status, title: card?.title, project_id: currentProjectId })
     if (!res.ok) console.warn('Set status failed:', res.error)
-    await refresh()
+    await refresh(currentProjectId)
   }
+
+  const [projectSessions, setProjectSessions] = useState<Record<string, SessionRow[]>>({
+    default: SESSIONS,
+    'proj-nimbus': [
+      { title: 'Nimbus CLI · 命令解析重构', meta: 'claude · opus-4 · Nimbus', time: '10分钟前', active: true },
+      { title: 'Nimbus CLI · Shell 自动补全支持', meta: 'codex · gpt-4o · Nimbus', time: '昨天' }
+    ],
+    'proj-atlas': [
+      { title: 'Atlas Gateway · 流量接入熔断策略', meta: 'claude · opus-4 · Atlas', time: '1小时前', active: true },
+      { title: 'Atlas Gateway · 路由表热更新', meta: 'pi · local · Atlas', time: '2天前' }
+    ]
+  })
+
+  const currentSessions = projectSessions[currentProjectId] ?? [
+    { title: `${projects.find(p => p.id === currentProjectId)?.name ?? '项目'} · 任务实施会话`, meta: 'claude · 自动初始化', time: '刚刚', active: true }
+  ]
 
   return (
     <div
@@ -165,6 +217,10 @@ export default function App() {
           onNav={handleNav}
           onNewTask={() => setNewTaskOpen(true)}
           onOpenChannel={() => setDrawerOpen(true)}
+          projects={projects}
+          currentProjectId={currentProjectId}
+          onSelectProject={handleSelectProject}
+          onAddProject={() => setAddProjectOpenStandalone(true)}
         />
 
         <main style={{ flex: 1, display: 'flex', minWidth: 0 }}>
@@ -179,6 +235,9 @@ export default function App() {
                 onSelect={setSelectedId}
                 onGate={openGate}
                 onSetStatus={handleSetStatus}
+                projects={projects}
+                currentProjectId={currentProjectId}
+                onSelectProject={handleSelectProject}
               />
             ))}
           {nav === 'assets' && <TeamAssets />}
@@ -192,11 +251,40 @@ export default function App() {
           {nav === 'settings-other' && <SettingsOther active={settingsTab} onTab={handleSettingsTab} />}
         </main>
 
-        {drawerOpen && <SessionDrawer onClose={() => setDrawerOpen(false)} onNewSession={() => setDrawerOpen(false)} />}
-        {newTaskOpen && <NewTaskModal onClose={() => setNewTaskOpen(false)} onConfirm={handleCreateTask} onNavigateSettings={() => setNav('settings-mcp')} />}
+        {drawerOpen && (
+          <SessionDrawer
+            onClose={() => setDrawerOpen(false)}
+            onNewSession={() => {
+              // Create or reset session for current project
+              const curProj = projects.find(p => p.id === currentProjectId)?.name ?? 'Acme Platform'
+              const newSess: SessionRow = {
+                title: `${curProj} · 研发澄清会话`,
+                meta: 'claude · sonnet · 实施准备',
+                time: '刚刚',
+                active: true,
+              }
+              setProjectSessions(prev => ({
+                ...prev,
+                [currentProjectId]: [newSess, ...(prev[currentProjectId] || [])]
+              }))
+            }}
+            projectName={projects.find(p => p.id === currentProjectId)?.name ?? 'Acme Platform'}
+            sessions={currentSessions}
+          />
+        )}
+        {newTaskOpen && <NewTaskModal onClose={() => setNewTaskOpen(false)} onConfirm={handleCreateTask} onProjectCreated={handleCreateProject} onNavigateSettings={() => setNav('settings-mcp')} initialProjectId={currentProjectId} />}
         {addAgentOpen && <AddAgentModal onClose={() => setAddAgentOpen(false)} onConfirm={() => setAddAgentOpen(false)} />}
         {addConnectorOpen && (
           <AddConnectorModal onClose={() => setAddConnectorOpen(false)} onConfirm={() => setAddConnectorOpen(false)} />
+        )}
+        {addProjectOpenStandalone && (
+          <AddProjectModal
+            onClose={() => setAddProjectOpenStandalone(false)}
+            onConfirm={(p) => {
+              setAddProjectOpenStandalone(false)
+              void handleCreateProject(p)
+            }}
+          />
         )}
         {gateModal && (
           <GateDecisionModal

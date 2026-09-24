@@ -24,6 +24,7 @@
 
   /* ---- accents ---- */
   --c-emerald: #34d399;
+  --c-accent: #34d399;
   --c-emerald-edge: #33d499;
   --c-blue: #5b9dff;
   --c-amber: #e8a33d;
@@ -92,17 +93,23 @@ textarea::placeholder {
 }
 
 /* thin, on-brand scrollbars for the board + panel overflow */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2b3548 transparent;
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(14, 17, 24, 0.4);
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #1f2533;
-  border-radius: 4px;
+  background: #2b3548;
+  border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #2a3140;
+  background: var(--c-emerald);
 }

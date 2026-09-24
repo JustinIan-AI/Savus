@@ -1,0 +1,138 @@
+/* ============================================================
+   LoopDesk v2.0 — Brand Colors & Type
+   深色唯一交付 · emerald #34D399 主强调 · 1:1 Ardot 724693301521075
+   前端 MUST 以 CSS 自定义属性消费，不得硬编码原始色值/尺寸。
+   ============================================================ */
+
+:root {
+  /* ---- surfaces ---- */
+  --c-base: #0b0e14;
+  --c-rail: #0e1118;
+  --c-surface: #151922;
+  --c-selected: #13261d;
+  --c-pill: #182437;
+
+  /* ---- lines ---- */
+  --c-border: #1b2030;
+  --c-border-head: #1c212b;
+  --c-divider: #212630;
+  --c-chip: #242936;
+  --c-proj-active: #29303d;
+  --c-kbd: #333b4a;
+  --c-avatar: #2a313d;
+
+  /* ---- accents ---- */
+  --c-emerald: #34d399;
+  --c-accent: #34d399;
+  --c-emerald-edge: #33d499;
+  --c-blue: #5b9dff;
+  --c-amber: #e8a33d;
+  --c-teal: #2dd4bf;
+
+  /* ---- accents, tinted wells ---- */
+  --c-warn-well: #1a1611;
+  --c-cmd-well: #0f172a;
+  --c-mcp-well: #0b1f1e;
+
+  /* ---- type ---- */
+  --c-tp: #e6e9ef;
+  --c-ts: #9aa3b2;
+  --c-tm: #6b727f;
+
+  /* ---- families ---- */
+  --f-sans: 'Noto Sans SC', 'Sarasa Gothic SC', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', system-ui, sans-serif;
+  --f-mono: 'Geist Mono', ui-monospace, 'SFMono-Regular', 'JetBrains Mono', Menlo, monospace;
+  --f-display: 'Geist', 'Noto Sans SC', system-ui, sans-serif;
+
+  /* ============================================================
+     Semantic aliases (head-contract / Tailwind 兼容)
+     ============================================================ */
+  --background: #0b0e14;
+  --foreground: #e6e9ef;
+  --card: #151922;
+  --card-foreground: #e6e9ef;
+  --popover: #151922;
+  --popover-foreground: #e6e9ef;
+  --primary: #34d399;
+  --primary-foreground: #0b0e14;
+  --muted: #1b2030;
+  --muted-foreground: #9aa3b2;
+  --border: #1b2030;
+  --input: #242936;
+  --ring: #34d399;
+
+  /* ---- state colors（语义状态专用，非身份色） ---- */
+  --state-success: #34d399;
+  --state-warning: #e8a33d;
+  --state-error: #f87171;
+  --state-info: #5b9dff;
+
+  /* ---- restrained radius scale ---- */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--c-base);
+  color: var(--c-tp);
+  font-family: var(--f-sans);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button {
+  font-family: inherit;
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+}
+
+input,
+textarea {
+  font-family: inherit;
+  border: none;
+  background: none;
+  outline: none;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+/* thin, on-brand scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2b3548 transparent;
+}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(14, 17, 24, 0.4);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb {
+  background: #2b3548;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--c-emerald);
+}

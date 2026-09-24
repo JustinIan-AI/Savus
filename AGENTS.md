@@ -146,7 +146,8 @@ LoopDesk 的产品定位已于 **2026-09-11 完成一次重新定义**。**v0.1 
 - module audit（模块取舍权威）: `docs/decisions/module-audit-loopdesk-vs-opensquilla.md`
 - 全量包名迁移决策: `docs/decisions/full-package-rename.md`
 - 前端实现 × PRD §9.11 核对与待优化清单: `docs/design-system/frontend-vs-prd-audit.md`（2026-09-14；含配套审计看板 `frontend-vs-prd-audit-board.png`）
-- WebUI × Gateway 任务全生命周期前后端完备性验证: `docs/design-system/webui-frontend-backend-verification.md`（2026-09-16；**两轮记录**——附录 A 为接线前 19/24，正文 §0 为 P0 接线后 23/23；复跑脚本 `tests/verify_webui_lifecycle.py`，证据截图 `docs/design-system/webui-lifecycle-wired.png`）
+- WebUI × Gateway 任务全生命周期前后端完备性验证: `docs/design-system/webui-frontend-backend-verification.md`（2026-09-16；**三轮记录，最新在前**——正文 §0 为 P1 补齐后 **39/39**、附录 A 为 P0 接线后 23/23、附录 B 为接线前 19/24；复跑脚本 `tests/verify_webui_lifecycle.py`，证据截图 `docs/design-system/webui-p1-status-menu.png` / `webui-p1-copy-feedback.png` / `webui-lifecycle-wired.png`）
+- 任务生命周期 REST 契约（唯一权威 = 代码 + 上条报告 §0.3）：`GET|POST /api/v1/projects/{project_id}/tasks`、`PATCH /api/v1/tasks/{task_id}`（生命周期移动）、`POST /api/v1/tasks/{task_id}/gate/decision`（审计裁决）。**裁决 ≠ 状态移动**：只有裁决带批注、落 run log，是唯一能关单的动作；卡片四枚动作据此分成两条路
 - 前端数据源模型：**看板 = 画布种子 ⊕ 后端任务集合**（`frontend/src/data.ts` 的运行时叠加层 `setRuntimeTasks` / `allTasks` / `columnOf` / `cardsInColumn` / `boardColumns`）。后端任务只覆盖 `state`，不动画布文案——改看板数据源前先读该文件顶部注释，勿改成「用后端数据替换画布」
 - 画布修订 v2（主对象回归任务中心）: 主画布 `724693301521075`（改动落在 `2:1` 与新帧「09 弹窗 · 新建任务」`24:64`）；修订记录画布 `725718927556454`（**仅说明用途，非第二份事实源**）；修订截图 `docs/design-system/canvas-revision/`（2026-09-14）
   - 裁决：主对象 = 任务（Session 降为手动动作渠道）；看板第三列 = **评审中**；右栏三级术语分层（Goal / 审批门 / Run Log 默认折叠）

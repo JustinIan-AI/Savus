@@ -1,5 +1,5 @@
 import { CloseIcon, PlusIcon, SearchIcon } from '../components/icons'
-import { SESSIONS } from '../data'
+import { SESSIONS, type SessionRow } from '../data'
 
 /* ============================================================
    Screen 6 — 会话列表抽屉
@@ -13,9 +13,11 @@ import { SESSIONS } from '../data'
 interface Props {
   onClose: () => void
   onNewSession: () => void
+  projectName?: string
+  sessions?: SessionRow[]
 }
 
-export function SessionDrawer({ onClose, onNewSession }: Props) {
+export function SessionDrawer({ onClose, onNewSession, projectName = 'Acme Platform', sessions }: Props) {
   return (
     <>
       <div
@@ -47,10 +49,27 @@ export function SessionDrawer({ onClose, onNewSession }: Props) {
             justifyContent: 'space-between',
           }}
         >
-          <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--c-tp)' }}>会话</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: 'var(--c-tp)' }}>会话</span>
+            <span
+              style={{
+                fontSize: 11,
+                padding: '2px 8px',
+                borderRadius: 10,
+                background: 'var(--c-chip)',
+                color: 'var(--c-emerald)',
+                maxWidth: 150,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {projectName}
+            </span>
+          </div>
           <button
             onClick={onClose}
-            style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            style={{ width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
           >
             <CloseIcon size={16} style={{ color: 'var(--c-ts)' }} />
           </button>
@@ -103,7 +122,7 @@ export function SessionDrawer({ onClose, onNewSession }: Props) {
 
         {/* conversations — 60px rows, hairline under each, 18/14 insets */}
         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-          {SESSIONS.map((s) => (
+          {(sessions && sessions.length > 0 ? sessions : SESSIONS).map((s) => (
             <div
               key={s.title}
               style={{

@@ -8,7 +8,7 @@ export type NavKey = 'board' | 'assets' | 'control' | 'settings-agent' | 'settin
 export type TaskColumnId = 'todo' | 'doing' | 'review' | 'done'
 
 /** A card's trailing status line — colour is driven by the state itself. */
-export type CardState = 'handoff' | 'gate' | 'delivered'
+export type CardState = 'todo' | 'handoff' | 'gate' | 'delivered'
 
 export interface TaskCard {
   id: string
@@ -146,17 +146,21 @@ export interface RuntimeTaskInput {
   intent?: string
 }
 
-/** 后端 status → 卡片状态词。未知状态一律按 handoff 处理。 */
+/** 后端 status → 卡片状态词。未知状态一律按 handoff 处理。
+    `in_review` 落在「评审中」栏（用于决策：通过 / 打回）；
+    `blocked`（阻塞需返工）则直接丢入「进行中」栏，便于 Agent 处理继续编码/修复。 */
 const STATE_BY_STATUS: Record<string, CardState> = {
-  planned: 'handoff',
+  planned: 'todo',
   active: 'handoff',
-  blocked: 'gate',
+  in_review: 'gate',
+  blocked: 'handoff',
   completed: 'delivered',
   canceled: 'delivered',
 }
 
 /** 卡片状态词 → 看板列。仅用于**被后端状态改写过**的卡片。 */
 const COLUMN_BY_STATE: Record<CardState, TaskColumnId> = {
+  todo: 'todo',
   handoff: 'doing',
   gate: 'review',
   delivered: 'done',
@@ -165,18 +169,25 @@ const COLUMN_BY_STATE: Record<CardState, TaskColumnId> = {
 export const cardStateOfStatus = (status?: string): CardState => STATE_BY_STATUS[status ?? ''] ?? 'handoff'
 
 let RUNTIME: TaskCard[] = []
+let CURRENT_PROJECT_ID: string = 'default'
 /** 画布种子卡片里，被后端 status 改写过状态的那些：id → state。 */
 let OVERRIDDEN: Record<string, CardState> = {}
+/** 后端见过的原始 status（含未被改写状态的种子卡）：id → status。
+    「状态 ▾」下拉据此标出当前项。 */
+let RUNTIME_STATUS: Record<string, string> = {}
 
 /** 把一次 `fetchTasks` 的结果灌进叠加层。必须在触发渲染前调用。 */
-export function setRuntimeTasks(inputs: RuntimeTaskInput[]): void {
+export function setRuntimeTasks(inputs: RuntimeTaskInput[], projectId: string = 'default'): void {
+  CURRENT_PROJECT_ID = projectId
   const seedIds = new Set(TASKS.map((t) => t.id))
   const overridden: Record<string, CardState> = {}
   const appended: TaskCard[] = []
+  const statuses: Record<string, string> = {}
 
   for (const t of inputs) {
     if (!t || !t.id) continue
     const state = cardStateOfStatus(t.status)
+    if (t.status) statuses[t.id] = t.status
     if (seedIds.has(t.id)) {
       overridden[t.id] = state
       continue
@@ -195,10 +206,14 @@ export function setRuntimeTasks(inputs: RuntimeTaskInput[]): void {
 
   OVERRIDDEN = overridden
   RUNTIME = appended
+  RUNTIME_STATUS = statuses
 }
 
+/** 这张卡片在工作区里的原始 status（画布种子卡若从未落库则为 undefined）。 */
+export const taskStatusOf = (id: string): string | undefined => RUNTIME_STATUS[id]
+
 /** 画布种子 + 后端追加，按 id 查询时叠加层优先（同 id 已在灌入时折叠为覆盖）。 */
-export const allTasks = (): TaskCard[] => [...TASKS, ...RUNTIME]
+export const allTasks = (): TaskCard[] => CURRENT_PROJECT_ID === 'default' ? [...TASKS, ...RUNTIME] : [...RUNTIME]
 
 export const taskById = (id: string): TaskCard =>
   (allTasks().find((t) => t.id === id) ?? TASKS.find((t) => t.id === DEFAULT_TASK_ID) ?? TASKS[0]) as TaskCard
@@ -215,9 +230,10 @@ export function columnOf(id: string): TaskColumnId {
 
 /** 某一列的卡片 id 列表：留在原列的种子 + 被移进来的种子 + 后端追加的卡片。 */
 export function cardsInColumn(id: TaskColumnId): string[] {
-  const seed = BOARD.find((b) => b.column === id)?.cards ?? []
+  const isDefault = CURRENT_PROJECT_ID === 'default'
+  const seed = isDefault ? (BOARD.find((b) => b.column === id)?.cards ?? []) : []
   const stayed = seed.filter((cid) => !OVERRIDDEN[cid])
-  const arrived = Object.keys(OVERRIDDEN).filter((cid) => COLUMN_BY_STATE[OVERRIDDEN[cid]] === id)
+  const arrived = isDefault ? Object.keys(OVERRIDDEN).filter((cid) => COLUMN_BY_STATE[OVERRIDDEN[cid]] === id) : []
   const appended = RUNTIME.filter((t) => t.id && COLUMN_BY_STATE[t.state] === id).map((t) => t.id)
   return [...stayed, ...arrived, ...appended]
 }
@@ -242,9 +258,12 @@ export function boardColumns(): TaskColumn[] {
     appended[col] = (appended[col] ?? 0) + 1
   }
 
+  const isDefault = CURRENT_PROJECT_ID === 'default'
   return KANBAN_COLUMNS.map((c) => ({
     ...c,
-    count: Math.max(0, c.count + (arrived[c.id] ?? 0) + (appended[c.id] ?? 0) - (left[c.id] ?? 0)),
+    count: isDefault
+      ? Math.max(0, c.count + (arrived[c.id] ?? 0) + (appended[c.id] ?? 0) - (left[c.id] ?? 0))
+      : (appended[c.id] ?? 0),
   }))
 }
 
@@ -259,13 +278,33 @@ export const BOARD: { column: TaskColumnId; cards: string[] }[] = [
 
 /* The 3rd column is 评审中 — the approval gate lives *inside* it as the
    inspector's 审批门 block, so the card line must not read "待审批". */
+export const STATUS_BADGE_TEXT: Record<string, string> = {
+  planned: '待办 · 未启动',
+  active: '进行中 · 可续跑',
+  in_review: '评审中 · 等待确认',
+  blocked: '阻塞 · 需返工',
+  completed: '已完成 · run log 完整',
+  canceled: '已取消 · 任务终止',
+}
+
+export const STATUS_BADGE_COLOR: Record<string, string> = {
+  planned: 'var(--c-blue)',
+  active: 'var(--c-emerald)',
+  in_review: 'var(--c-amber)',
+  blocked: 'var(--c-amber)',
+  completed: 'var(--c-ts)',
+  canceled: 'var(--c-tm)',
+}
+
 export const CARD_STATE_TEXT: Record<CardState, string> = {
+  todo: '待办 · 未启动',
   handoff: 'handoff 可续跑',
   gate: '评审中 · 等待确认',
   delivered: '已交付 · run log 完整',
 }
 
 export const CARD_STATE_COLOR: Record<CardState, string> = {
+  todo: 'var(--c-blue)',
   handoff: 'var(--c-emerald)',
   gate: 'var(--c-amber)',
   delivered: 'var(--c-ts)',
@@ -297,6 +336,7 @@ export const DEFAULT_TASK_ID = 'ACME-201'
 
 /** 右栏状态芯片 —— 比看板卡片那句话更短，22px 芯片只放得下一个词。 */
 export const INSPECTOR_STATUS_TEXT: Record<CardState, string> = {
+  todo: '待办',
   handoff: 'handoff',
   gate: '评审中',
   delivered: '已交付',
@@ -313,6 +353,17 @@ export const INSPECTOR_GROUP_RULES = {
 
 /** 六阶段进度按 state 推进；画布样例（handoff）就是第一档。 */
 const STAGE_BY_STATE: Record<CardState, { stages: { label: string; state: StageState }[]; summary: string }> = {
+  todo: {
+    stages: [
+      { label: '分诊', state: 'current' },
+      { label: '制作', state: 'todo' },
+      { label: '检查', state: 'todo' },
+      { label: '升级', state: 'todo' },
+      { label: '日志', state: 'todo' },
+      { label: '停止', state: 'todo' },
+    ],
+    summary: 'triage 准备中 · 待启动 · 0 / 6 阶段',
+  },
   handoff: {
     stages: [
       { label: '分诊', state: 'done' },
@@ -358,12 +409,14 @@ export const DISPOSITION_ROUTES = [
 export type DispositionRouteKey = (typeof DISPOSITION_ROUTES)[number]['key']
 
 const ROUTE_BY_STATE: Record<CardState, DispositionRouteKey> = {
+  todo: 'fix_pr',
   handoff: 'fix_pr',
   gate: 'fix_pr',
   delivered: 'log',
 }
 
 const DISPOSITION_RUN: Record<CardState, string> = {
+  todo: 'run #1 · 待启动',
   handoff: 'run #3 · 候选预检',
   gate: 'run #4 · 待 operator 确认',
   delivered: 'run #5 · 已归档',
@@ -380,36 +433,42 @@ export const DISPOSITION_VERIFY = {
 /* ---------- ② 详情 ---------- */
 
 const DECISION_BY_STATE: Record<CardState, string> = {
+  todo: '待规划 · 待分配 Agent',
   handoff: 'worktree 隔离 + 预算上限',
   gate: '改动冻结 · 只读评审包',
   delivered: 'worktree 已清理 · 分支已合并',
 }
 
 const TODO_BY_STATE: Record<CardState, string> = {
+  todo: '启动执行循环',
   handoff: '补充 operator gate 审批',
   gate: '等待 operator 确认',
   delivered: '无 · loop 已关闭',
 }
 
 const EXEC_BY_STATE: Record<CardState, { status: string; step: string; pct: number }> = {
+  todo: { status: '· 待办', step: '第 0 / 5 步', pct: 0.05 },
   handoff: { status: '· 运行中', step: '第 3 / 5 步', pct: 0.6 },
   gate: { status: '· 已暂停', step: '第 5 / 5 步', pct: 1 },
   delivered: { status: '· 已完成', step: '5 / 5 步', pct: 1 },
 }
 
 const GATE_BY_STATE: Record<CardState, { text: string; action: string; pending: number }> = {
+  todo: { text: '待启动 · 无阻断', action: '就绪', pending: 0 },
   handoff: { text: 'health → operator 待审批', action: '待你审批', pending: 1 },
   gate: { text: 'health → operator 待审批', action: '待你审批', pending: 1 },
   delivered: { text: 'gate 已放行 · receipt 已归档', action: '已放行', pending: 0 },
 }
 
 const GOAL_SUMMARY_BY_STATE: Record<CardState, string> = {
+  todo: '0 决策 · 待规划',
   handoff: '2 决策 · 1 待确认',
   gate: '3 决策 · 0 待确认',
   delivered: '3 决策 · 已归档',
 }
 
 const RUNLOG_SUMMARY_BY_STATE: Record<CardState, string> = {
+  todo: '1 条事件',
   handoff: '12 条事件',
   gate: '18 条事件',
   delivered: '24 条事件',
@@ -418,7 +477,7 @@ const RUNLOG_SUMMARY_BY_STATE: Record<CardState, string> = {
 /* ---------- ③ 交付物清单 ---------- */
 
 /** 详情页里可被锚定的区块 —— 内链跳这里。 */
-export type DetailAnchor = 'packet' | 'completion' | 'diff' | 'readiness' | 'host-gate' | 'receipt' | 'run-log'
+export type DetailAnchor = 'packet' | 'completion' | 'diff' | 'readiness' | 'host-gate' | 'receipt' | 'run-log' | 'goal'
 
 export interface Deliverable {
   name: string
@@ -440,6 +499,12 @@ export function deliverablesFor(card: TaskCard): Deliverable[] {
   const repo = `${REPO}/${slugOf(card.branch)}`
   const n = noOf(card.id)
   switch (card.state) {
+    case 'todo':
+      return [
+        { name: '待分配分支', target: '本地工作区', kind: 'internal', anchor: 'goal' },
+        { name: 'LOOP-STATE.json', target: '本地 · .loopdesk/' + card.id, kind: 'internal', anchor: 'run-log' },
+        { name: '任务目标', target: '详情 · Goal', kind: 'internal', anchor: 'goal' },
+      ]
     case 'handoff':
       return [
         { name: card.branch, target: 'github.com/acme-platform', kind: 'external', href: repo },
@@ -466,12 +531,16 @@ export function deliverablesFor(card: TaskCard): Deliverable[] {
 /* ---------- 尾部 · 成本 / 配额（不属三段） ---------- */
 
 const COST_BY_STATE: Record<CardState, { value: string; pct: number; note: string }> = {
+  todo: { value: "/bin/zsh.00 / .00", pct: 0, note: "quota 决策: 未启动" },
   handoff: { value: '$0.42 / $1.00', pct: 0.586, note: 'quota 决策: should-run = true · kill switch 就绪' },
   gate: { value: '$0.78 / $1.00', pct: 0.78, note: 'quota 决策: should-run = false · 改动已冻结' },
   delivered: { value: '$0.91 / $1.00', pct: 0.91, note: 'quota 决策: loop 已关闭 · 结算完成' },
 }
 
 const RUNLOG_BY_STATE: Record<CardState, { text: string; tone: 'ts' | 'amber' | 'blue' }[]> = {
+  todo: [
+    { text: '[init] task created and queued in todo', tone: 'blue' },
+  ],
   handoff: [
     { text: '[ok]   evidence: %EVIDENCE%', tone: 'ts' },
     { text: '[gate] operator approval pending', tone: 'amber' },
@@ -498,11 +567,23 @@ export function inspectorView(id: string) {
   const cost = COST_BY_STATE[card.state]
   const fill = (s: string) => s.replace(/%EVIDENCE%/g, card.evidence).replace(/%AGENT%/g, card.agent)
 
+  const rawStatus = taskStatusOf(card.id)
+  const statusLabelMap: Record<string, string> = {
+    planned: '待办',
+    active: '进行中',
+    in_review: '评审中',
+    blocked: '阻塞',
+    completed: '已完成',
+    canceled: '已取消',
+  }
+  const displayLabel = (rawStatus && statusLabelMap[rawStatus]) || INSPECTOR_STATUS_TEXT[card.state]
+  const displayTone = (rawStatus && STATUS_BADGE_COLOR[rawStatus]) || CARD_STATE_COLOR[card.state]
+
   return {
     card,
     status: {
-      label: INSPECTOR_STATUS_TEXT[card.state],
-      tone: CARD_STATE_COLOR[card.state],
+      label: displayLabel,
+      tone: displayTone,
       stages: stage.stages,
       stageSummary: stage.summary,
       disposition: {
@@ -784,23 +865,44 @@ export const CHANNEL_SCOPE_HINT = CHANNEL_SCOPES.join(' · ')
 
 /** Per-column card actions: a task in flight is submitted for review;
  *  a task under review is approved or sent back. */
-/* 卡片动作 —— 每枚按钮带一个动作 id，接线处据此决定落到哪个后端契约。
-   网关目前只暴露**一个**任务状态转移端点（审批门裁决），所以四枚按钮
-   都汇到它：通过 / 提交评审 / 状态 ▾ 预选「放行」，打回 预选「驳回」。
-   模态窗里可以随时改选，因此实际裁决仍由用户决定。
-   P1：`状态 ▾` 该换成真正的状态下拉，并配一个 `PATCH /tasks/{id}` 端点。 */
-export type CardActionId = 'gate-approve' | 'gate-deny'
+/* 卡片动作 —— 每枚按钮带一个动作 id，接线处据此决定落到哪个后端契约：
+
+     - `submit-review` → `PATCH /tasks/{id}` status=in_review（纯生命周期移动）
+     - `set-status`    → 卡片内展开状态下拉，选定后同样走 `PATCH`
+     - `gate-approve` / `gate-deny` → 审批门裁决模态，POST `/gate/decision`
+
+   裁决与状态移动是**两件事**：裁决带批注、留凭据、是唯一能关单的动作；
+   PATCH 只是把任务挪列。所以「通过 / 打回」仍然进模态，不改成 PATCH。 */
+export type CardActionId = 'start-task' | 'gate-approve' | 'gate-deny' | 'submit-review' | 'set-status'
 
 export const CARD_ACTIONS: Partial<Record<TaskColumnId, { id: CardActionId; label: string; primary?: boolean }[]>> = {
+  todo: [
+    { id: 'start-task', label: '开始执行', primary: true },
+    { id: 'set-status', label: '状态 ▾' },
+  ],
   doing: [
-    { id: 'gate-approve', label: '提交评审', primary: true },
-    { id: 'gate-approve', label: '状态 ▾' },
+    { id: 'submit-review', label: '提交评审', primary: true },
+    { id: 'set-status', label: '状态 ▾' },
   ],
   review: [
     { id: 'gate-approve', label: '通过', primary: true },
     { id: 'gate-deny', label: '打回' },
   ],
 }
+
+/** 「提交评审」落到的状态 —— 与 `STATE_BY_STATUS` 一起决定卡片换到哪一列。 */
+export const SUBMIT_REVIEW_STATUS = 'in_review'
+
+/** 「状态 ▾」下拉的选项。值与后端 `LoopWorkspaceStatus` 一一对应，
+    写错的话网关会回 400（而不是默默把卡片停在一个没有列能渲染的状态）。 */
+export const TASK_STATUS_OPTIONS = [
+  { value: 'planned', label: '待办' },
+  { value: 'active', label: '进行中' },
+  { value: SUBMIT_REVIEW_STATUS, label: '评审中' },
+  { value: 'blocked', label: '阻塞 · 需返工' },
+  { value: 'completed', label: '已完成' },
+  { value: 'canceled', label: '已取消' },
+] as const
 
 /* ---------- C4 · 新建任务面板 ---------- */
 
@@ -858,6 +960,7 @@ export interface DetailTask {
 /** 卡片 state → 详情页状态标签。画布样例本身是一条 handoff 态任务，
  *  因此该档沿用画布措辞（修复中）；另两档复用看板自己的词表。 */
 export const DETAIL_STATUS: Record<CardState, string> = {
+  todo: '待办中',
   handoff: '修复中',
   gate: '评审中',
   delivered: '已交付',

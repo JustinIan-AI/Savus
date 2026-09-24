@@ -561,6 +561,13 @@ def create_gateway_app(
     register_event_routes(app)
 
 
+    from loopdesk.gateway.orchestration import register_orchestration_routes  # noqa: PLC0415
+    register_orchestration_routes(app)
+    from loopdesk.gateway.connectors import register_connector_routes  # noqa: PLC0415
+    register_connector_routes(app)
+    from loopdesk.gateway.templates_assets import register_template_and_asset_routes  # noqa: PLC0415
+    register_template_and_asset_routes(app)
+
     register_audio_transcription_routes(app, config=config)
 
     return app

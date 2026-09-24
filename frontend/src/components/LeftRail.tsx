@@ -7,6 +7,10 @@ interface Props {
   onNav: (k: NavKey) => void
   onNewTask: () => void
   onOpenChannel: () => void
+  projects?: Array<{ id: string; name: string; mode: string; count?: string | number }>
+  currentProjectId?: string
+  onSelectProject?: (id: string) => void
+  onAddProject?: () => void
 }
 
 const ICONS: Record<string, (p: { size?: number; style?: React.CSSProperties }) => JSX.Element> = {
@@ -87,7 +91,7 @@ function NavRow({
   )
 }
 
-export function LeftRail({ active, onNav, onNewTask, onOpenChannel }: Props) {
+export function LeftRail({ active, onNav, onNewTask, onOpenChannel, projects = [], currentProjectId = 'default', onSelectProject, onAddProject }: Props) {
   const isSettings = active.startsWith('settings')
 
   return (
@@ -195,37 +199,78 @@ export function LeftRail({ active, onNav, onNewTask, onOpenChannel }: Props) {
 
       {/* projects */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: 8 }}>
-        <span style={{ fontSize: 11, color: 'var(--c-tm)', paddingLeft: 4, lineHeight: '13px' }}>项目</span>
-        {PROJECTS.map((p) => (
-          <div
-            key={p.name}
-            style={{
-              height: 34,
-              borderRadius: 8,
-              background: p.active ? 'var(--c-surface)' : 'transparent',
-              boxShadow: p.active ? 'inset 0 0 0 1px var(--c-proj-active)' : 'none',
-              padding: '0 12px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              cursor: 'pointer',
-            }}
-          >
-            <span
-              style={{ width: 8, height: 8, borderRadius: 4, background: DOT_COLOR[p.dot], flexShrink: 0 }}
-            />
-            <span
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingLeft: 4, paddingRight: 4 }}>
+          <span style={{ fontSize: 11, color: 'var(--c-tm)', lineHeight: '13px' }}>项目</span>
+          {onAddProject && (
+            <button
+              onClick={onAddProject}
+              title="新建工作区项目"
               style={{
-                fontSize: 13,
-                fontWeight: p.active ? 500 : 400,
-                color: p.active ? 'var(--c-tp)' : 'var(--c-ts)',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--c-tm)',
+                cursor: 'pointer',
+                fontSize: 12,
+                display: 'flex',
+                alignItems: 'center',
+                padding: '2px 4px',
               }}
             >
-              {p.name}
-            </span>
-            <span style={{ fontFamily: 'var(--f-mono)', fontSize: 12, color: 'var(--c-tm)' }}>{p.count}</span>
-          </div>
-        ))}
+              +
+            </button>
+          )}
+        </div>
+        {(projects.length > 0 ? projects : PROJECTS.map(p => ({ id: p.name, name: p.name, mode: 'local', count: p.count }))).map((p) => {
+          const isActive = p.id === currentProjectId || (p.id === 'default' && currentProjectId === 'default')
+          const isRemote = p.mode === 'remote'
+          const dotColor = isRemote ? 'var(--c-blue)' : 'var(--c-emerald)'
+          return (
+            <div
+              key={p.id}
+              onClick={() => onSelectProject && onSelectProject(p.id)}
+              style={{
+                height: 34,
+                borderRadius: 8,
+                background: isActive ? 'var(--c-surface)' : 'transparent',
+                boxShadow: isActive ? 'inset 0 0 0 1px var(--c-proj-active)' : 'none',
+                padding: '0 10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                cursor: 'pointer',
+              }}
+            >
+              <span
+                style={{ width: 7, height: 7, borderRadius: 3.5, background: dotColor, flexShrink: 0 }}
+              />
+              <span
+                style={{
+                  flex: 1,
+                  fontSize: 13,
+                  fontWeight: isActive ? 500 : 400,
+                  color: isActive ? 'var(--c-tp)' : 'var(--c-ts)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {p.name}
+              </span>
+              <span
+                style={{
+                  fontSize: 10,
+                  fontFamily: 'var(--f-mono)',
+                  color: isRemote ? 'var(--c-blue)' : 'var(--c-tm)',
+                  background: isRemote ? 'rgba(91, 157, 255, 0.1)' : 'transparent',
+                  padding: '1px 4px',
+                  borderRadius: 4,
+                }}
+              >
+                {isRemote ? 'REMOTE' : (p.count ?? '')}
+              </span>
+            </div>
+          )
+        })}
       </div>
     </aside>
   )

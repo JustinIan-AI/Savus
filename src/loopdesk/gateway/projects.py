@@ -8,16 +8,32 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 
-# In-memory registry for projects initialized with default local project
+# In-memory registry for projects initialized with default projects aligned with UI
 _PROJECTS: dict[str, dict[str, Any]] = {
     "default": {
         "id": "default",
-        "name": "Default Workspace",
+        "name": "Acme Platform",
         "mode": "local",
         "root_path": ".",
         "remote_url": None,
         "required_connector": None,
-    }
+    },
+    "nimbus": {
+        "id": "nimbus",
+        "name": "Nimbus CLI",
+        "mode": "local",
+        "root_path": "./packages/nimbus",
+        "remote_url": None,
+        "required_connector": None,
+    },
+    "atlas": {
+        "id": "atlas",
+        "name": "Atlas Gateway",
+        "mode": "remote",
+        "root_path": None,
+        "remote_url": "https://github.com/acme/atlas-gateway.git",
+        "required_connector": "jira",
+    },
 }
 
 # Simulated active MCP connectors (can be discovered or queried)
@@ -44,7 +60,7 @@ async def create_project(request: Request) -> JSONResponse:
     mode = payload.get("mode", "local")
 
     if mode not in ("local", "remote"):
-        return JSONResponse({"error": "mode must be 'local' or 'remote'", "code": "INVALID_ARGUMENT"}, status_code=400)
+        return JSONResponse({"error": "mode must be local or remote", "code": "INVALID_ARGUMENT"}, status_code=400)
 
     project_data = {
         "id": proj_id,
@@ -61,7 +77,7 @@ async def create_project(request: Request) -> JSONResponse:
 async def validate_task_creation(request: Request) -> JSONResponse:
     """Pre-flight validation for task creation (enforces MCP connector guardrails)."""
     proj_id = request.path_params.get("project_id", "default")
-    proj = _PROJECTS.get(proj_id, _PROJECTS["default"])
+    proj = _PROJECTS.get(proj_id, _PROJECTS.get("default", {}))
 
     try:
         payload = await request.json()

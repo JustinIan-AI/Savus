@@ -1,0 +1,137 @@
+{
+  "project": "loopdesk-webui",
+  "canvas": {
+    "width": 1440,
+    "height": 900,
+    "deviceType": "desktop"
+  },
+  "shell": {
+    "shared": true,
+    "description": "所有页面共享同一外壳：240px LeftRail + 56px TopBar；看板页中栏 840（含 56 顶栏 + 看板 + 137 ConversationDock）+ 360px 检视器；非看板页中栏 1200。",
+    "sourceFiles": [
+      "frontend/src/components/LeftRail.tsx",
+      "frontend/src/components/TopBar.tsx",
+      "frontend/src/components/icons.tsx"
+    ]
+  },
+  "nodes": [
+    {
+      "id": "page-task-board",
+      "role": "base",
+      "stateGroupId": "shell",
+      "stateRole": "base",
+      "htmlSrc": "pages/task-board.html",
+      "dependsOn": [],
+      "sourceFiles": [
+        "frontend/src/screens/TaskBoard.tsx",
+        "frontend/src/components/ConversationDock.tsx",
+        "frontend/src/data.ts"
+      ]
+    },
+    {
+      "id": "page-team-assets",
+      "role": "base",
+      "stateGroupId": "shell",
+      "stateRole": "base",
+      "htmlSrc": "pages/team-assets.html",
+      "dependsOn": [],
+      "sourceFiles": [
+        "frontend/src/screens/TeamAssets.tsx",
+        "frontend/src/data.ts"
+      ]
+    },
+    {
+      "id": "page-settings-agent",
+      "role": "base",
+      "stateGroupId": "shell",
+      "stateRole": "base",
+      "htmlSrc": "pages/settings-agent.html",
+      "dependsOn": [],
+      "sourceFiles": [
+        "frontend/src/screens/SettingsAgent.tsx",
+        "frontend/src/screens/SettingsShell.tsx",
+        "frontend/src/data.ts"
+      ]
+    },
+    {
+      "id": "page-settings-mcp",
+      "role": "base",
+      "stateGroupId": "shell",
+      "stateRole": "base",
+      "htmlSrc": "pages/settings-mcp.html",
+      "dependsOn": [],
+      "sourceFiles": [
+        "frontend/src/screens/SettingsMcp.tsx",
+        "frontend/src/screens/SettingsShell.tsx",
+        "frontend/src/data.ts"
+      ]
+    },
+    {
+      "id": "page-settings-other",
+      "role": "base",
+      "stateGroupId": "shell",
+      "stateRole": "base",
+      "htmlSrc": "pages/settings-other.html",
+      "dependsOn": [],
+      "sourceFiles": [
+        "frontend/src/screens/SettingsOther.tsx",
+        "frontend/src/screens/SettingsShell.tsx",
+        "frontend/src/data.ts"
+      ]
+    },
+    {
+      "id": "page-session-drawer",
+      "role": "overlay",
+      "stateGroupId": "session-drawer",
+      "stateRole": "derived",
+      "baseStatePageId": "page-task-board",
+      "htmlSrc": "pages/session-drawer.html",
+      "dependsOn": [
+        "page-task-board"
+      ],
+      "mutableRegions": [
+        "body 末尾追加 SessionDrawer 覆盖层 + 半透明遮罩"
+      ],
+      "sourceFiles": [
+        "frontend/src/overlays/SessionDrawer.tsx",
+        "frontend/src/data.ts"
+      ]
+    },
+    {
+      "id": "page-add-agent",
+      "role": "overlay",
+      "stateGroupId": "add-agent",
+      "stateRole": "derived",
+      "baseStatePageId": "page-settings-agent",
+      "htmlSrc": "pages/add-agent.html",
+      "dependsOn": [
+        "page-settings-agent"
+      ],
+      "mutableRegions": [
+        "body 末尾追加 AddAgentModal 弹窗 + 遮罩"
+      ],
+      "sourceFiles": [
+        "frontend/src/overlays/Modals.tsx",
+        "frontend/src/data.ts"
+      ]
+    },
+    {
+      "id": "page-add-connector",
+      "role": "overlay",
+      "stateGroupId": "add-connector",
+      "stateRole": "derived",
+      "baseStatePageId": "page-settings-mcp",
+      "htmlSrc": "pages/add-connector.html",
+      "dependsOn": [
+        "page-settings-mcp"
+      ],
+      "mutableRegions": [
+        "body 末尾追加 AddConnectorModal 弹窗 + 遮罩"
+      ],
+      "sourceFiles": [
+        "frontend/src/overlays/Modals.tsx",
+        "frontend/src/data.ts"
+      ]
+    }
+  ]
+}

@@ -13,6 +13,10 @@ from pydantic import BaseModel, Field
 class LoopWorkspaceStatus(str, Enum):
     PLANNED = "planned"
     ACTIVE = "active"
+    # A task handed to the checker and waiting for a gate decision. Distinct
+    # from `blocked` on purpose: `in_review` waits on a *person*, `blocked`
+    # means a run actually failed and needs rework.
+    IN_REVIEW = "in_review"
     BLOCKED = "blocked"
     COMPLETED = "completed"
     CANCELED = "canceled"
@@ -102,6 +106,7 @@ class LoopWorkspaceState(BaseModel):
     loop_engine: dict[str, Any] | None = None
     task_graph: list[dict[str, Any]] = Field(default_factory=list)
     learning_loops: list[dict[str, Any]] = Field(default_factory=list)
+    gate_receipts: list[dict[str, Any]] = Field(default_factory=list)
     created_at: str = Field(default_factory=lambda: _utc_now())
     updated_at: str = Field(default_factory=lambda: _utc_now())
 

@@ -20,6 +20,21 @@ def _utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
+#: A workspace state file is per-root, so a "project" is a *label on the task*,
+#: not a partition of the state file. Tasks written before the label existed are
+#: treated as members of the default project rather than becoming invisible.
+DEFAULT_PROJECT_ID = "default"
+
+
+def _gate_status_for(status: str) -> str:
+    """Derive the gate column of a task from its lifecycle status."""
+    if status == "blocked":
+        return "blocked"
+    if status == "in_review":
+        return "pending"
+    return "passed"
+
+
 class LoopWorkspaceService:
     @classmethod
     def from_root(cls, root: Path) -> LoopWorkspaceService:
@@ -78,6 +93,7 @@ class LoopWorkspaceService:
             "context_pack_schema": state.context_pack_schema,
             "planner_output": state.planner_output,
             "learning_loops": state.learning_loops[-20:],
+            "gate_receipts": getattr(state, "gate_receipts", [])[-50:],
             "directories": self._directory_snapshot(),
             "templates": [
                 self._template_payload(template) for template in list_personal_templates()
@@ -132,6 +148,7 @@ class LoopWorkspaceService:
         status: str = "active",
         intent: str | None = None,
         phase: str | None = None,
+        project_id: str | None = None,
     ) -> dict[str, object]:
         """Insert or update one entry of the task collection the board reads.
 
@@ -151,9 +168,12 @@ class LoopWorkspaceService:
             entry["template"] = template
             entry["status"] = status
             entry["phase"] = phase or entry.get("phase") or "triage"
-            entry["gate_status"] = "blocked" if status == "blocked" else "passed"
+            entry["gate_status"] = _gate_status_for(status)
             if intent is not None:
                 entry["intent"] = intent
+            if project_id is not None:
+                entry["project_id"] = project_id
+            entry.setdefault("project_id", DEFAULT_PROJECT_ID)
             entry["updated_at"] = now
 
         self._repository.update(_mutator)
@@ -436,6 +456,28 @@ class LoopWorkspaceService:
         return ("memory", "skills", "artifacts", "worktrees", "personal_templates")
 
 
+    def record_gate_receipt(self, receipt: Any) -> None:
+        """Record a verified ValidationReceipt to LOOP-STATE.json and update task metadata."""
+        receipt_data = receipt.to_dict() if hasattr(receipt, "to_dict") else dict(receipt)
+
+        def _mutator(state: LoopWorkspaceState) -> None:
+            if not hasattr(state, "gate_receipts") or state.gate_receipts is None:
+                state.gate_receipts = []
+            state.gate_receipts.append(receipt_data)
+
+            task_id = receipt_data.get("task_id")
+            for t in state.tasks:
+                if isinstance(t, dict) and t.get("id") == task_id:
+                    decision = receipt_data.get("operator_decision", "approved")
+                    passed_gates = set(receipt_data.get("passed_gates", []))
+                    required_gates = {"health", "operator", "evidence", "focus", "quota"}
+                    t["gate_status"] = "passed" if (decision == "approved" and required_gates.issubset(passed_gates)) else "blocked"
+                    t["receipt_digest"] = receipt_data.get("sha256_digest")
+                    t["updated_at"] = _utc_now()
+                    break
+
+        self._repository.update(_mutator)
+
 def _load_context_file(path: Path) -> dict[str, object]:
     payload: dict[str, object] = {}
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -492,3 +534,4 @@ def _human_profile_payload(state: LoopWorkspaceState) -> dict[str, Any]:
     profile["_meta"].setdefault("cloud_sync", False)
     profile["_meta"].setdefault("team_context", False)
     return profile
+

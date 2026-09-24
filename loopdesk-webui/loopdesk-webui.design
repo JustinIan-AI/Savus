@@ -1,0 +1,146 @@
+{
+  "data": [
+    {
+      "id": "page-task-board",
+      "title": "01 任务看板",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1790160857000,
+      "canvasData": {
+        "x": 816,
+        "y": 0,
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-b0bede53",
+          "measuredAt": 1790164424608
+        }
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/task-board.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-team-assets",
+      "title": "02 团队资产",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1790160857000,
+      "canvasData": {
+        "x": 1600,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/team-assets.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-settings-agent",
+      "title": "03 设置 · Agent 编排",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1790160857000,
+      "canvasData": {
+        "x": 2220,
+        "y": 12,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/settings-agent.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-settings-mcp",
+      "title": "04 设置 · MCP 连接器",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1790160857000,
+      "canvasData": {
+        "x": 2916,
+        "y": 12,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/settings-mcp.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-settings-other",
+      "title": "05 设置 · 其他配置",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1790160857000,
+      "canvasData": {
+        "x": 840,
+        "y": 456,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/settings-other.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-session-drawer",
+      "title": "06 会话列表抽屉",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1790160857000,
+      "canvasData": {
+        "x": 1600,
+        "y": 492,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/session-drawer.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-modal-add-agent",
+      "title": "07 弹窗 · 添加 Agent",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1790160857000,
+      "canvasData": {
+        "x": 2220,
+        "y": 516,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/modal-add-agent.html",
+        "interactions": []
+      }
+    },
+    {
+      "id": "page-modal-add-connector",
+      "title": "08 弹窗 · 添加连接器",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1790160857000,
+      "canvasData": {
+        "x": 2916,
+        "y": 516,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/modal-add-connector.html",
+        "interactions": []
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": false,
+    "deviceType": "desktop",
+    "projectName": "LoopDesk v2.0 前端设计稿",
+    "designLibrary": null,
+    "visualEditorEnabled": false
+  }
+}

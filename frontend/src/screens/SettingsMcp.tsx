@@ -1,3 +1,4 @@
+import { fetchConnectorTasks, fetchConnectorDoc } from "../lib/api";
 import { SettingsShell, type SettingsTab } from './SettingsShell'
 import {
   CONNECTORS,

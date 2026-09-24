@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { TopBar } from '../components/TopBar'
 import { CloseIcon } from '../components/icons'
 import { detailView, type DetailTask, type DetailAnchor } from '../data'
@@ -218,6 +218,42 @@ function DetailBody({ view }: { view: DetailModel }) {
 
 function DisposePanel({ view, onClose }: { view: DetailModel; onClose: () => void }) {
   const { readiness, hostGate, receipt, runLog } = view
+  /* 「待宿主操作」的命令只交付、不代执行（cli_can_mutate_directly = false），
+     所以这里唯一能做的实事就是把它准确地放进剪贴板。 */
+  const [copied, setCopied] = useState(false)
+
+  const copyHostCommand = async () => {
+    const text = `${hostGate.cmd} ${hostGate.arg}`.trim()
+    let ok = false
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text)
+        ok = true
+      }
+    } catch {
+      ok = false
+    }
+    if (!ok) {
+      /* 非安全上下文（http://<lan-ip>）下 Clipboard API 会直接抛错，
+         退回 execCommand，否则这个按钮在局域网上完全失灵。 */
+      const scratch = document.createElement('textarea')
+      scratch.value = text
+      scratch.setAttribute('readonly', '')
+      scratch.style.position = 'fixed'
+      scratch.style.opacity = '0'
+      document.body.appendChild(scratch)
+      scratch.select()
+      try {
+        ok = document.execCommand('copy')
+      } catch {
+        ok = false
+      }
+      document.body.removeChild(scratch)
+    }
+    setCopied(ok)
+    window.setTimeout(() => setCopied(false), 1500)
+  }
+
   return (
     <aside
       style={{
@@ -344,6 +380,10 @@ function DisposePanel({ view, onClose }: { view: DetailModel; onClose: () => voi
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
+                data-testid="host-cmd-copy"
+                data-copied={copied ? 'true' : 'false'}
+                onClick={() => void copyHostCommand()}
+                title={`复制到剪贴板：${hostGate.cmd} ${hostGate.arg}`}
                 style={{
                   borderRadius: 5,
                   background: 'var(--c-selected)',
@@ -351,10 +391,11 @@ function DisposePanel({ view, onClose }: { view: DetailModel; onClose: () => voi
                   display: 'flex',
                   alignItems: 'center',
                   flexShrink: 0,
+                  cursor: 'pointer',
                 }}
               >
                 <span style={{ fontFamily: 'var(--f-mono)', fontSize: 10, color: 'var(--c-emerald)', lineHeight: '13px' }}>
-                  {hostGate.copy}
+                  {copied ? '已复制' : hostGate.copy}
                 </span>
               </button>
               <span

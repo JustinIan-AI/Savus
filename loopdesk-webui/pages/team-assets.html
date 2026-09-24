@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>02 团队资产 · LoopDesk</title>
+<style id="theme-vars">
+:root{
+  --c-base:#0b0e14;--c-rail:#0e1118;--c-surface:#151922;--c-selected:#13261d;--c-pill:#182437;
+  --c-border:#1b2030;--c-border-head:#1c212b;--c-divider:#212630;--c-chip:#242936;--c-proj-active:#29303d;
+  --c-kbd:#333b4a;--c-avatar:#2a313d;
+  --c-emerald:#34d399;--c-accent:#34d399;--c-emerald-edge:#33d499;--c-blue:#5b9dff;--c-amber:#e8a33d;--c-teal:#2dd4bf;
+  --c-warn-well:#1a1611;--c-cmd-well:#0f172a;--c-mcp-well:#0b1f1e;
+  --c-tp:#e6e9ef;--c-ts:#9aa3b2;--c-tm:#6b727f;
+  --f-sans:'Noto Sans SC','Sarasa Gothic SC','PingFang SC','Hiragino Sans GB','Microsoft YaHei',system-ui,sans-serif;
+  --f-mono:'Geist Mono',ui-monospace,'SFMono-Regular','JetBrains Mono',Menlo,monospace;
+  --f-display:'Geist','Noto Sans SC',system-ui,sans-serif;
+  --background:#0b0e14;--foreground:#e6e9ef;--card:#151922;--card-foreground:#e6e9ef;
+  --popover:#151922;--popover-foreground:#e6e9ef;--primary:#34d399;--primary-foreground:#0b0e14;
+  --muted:#1b2030;--muted-foreground:#9aa3b2;--border:#1b2030;--input:#242936;--ring:#34d399;
+  --state-success:#34d399;--state-warning:#e8a33d;--state-error:#f87171;--state-info:#5b9dff;
+  --radius-sm:4px;--radius-md:8px;--radius-lg:12px;--radius-full:9999px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--c-base);color:var(--c-tp);font-family:var(--f-sans);font-size:13px;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;border:none;background:none;padding:0;cursor:pointer;color:inherit}
+input,textarea{font-family:inherit;border:none;background:none;outline:none;color:inherit}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+<style id="critical-layout">
+:root{color-scheme:dark}
+body{overflow:hidden}
+.app{width:1440px;height:900px;display:flex;overflow:hidden;background:var(--c-base)}
+.mono{font-family:var(--f-mono)}
+svg{display:block;flex-shrink:0}
+
+/* ---------- left rail ---------- */
+.rail{width:240px;flex-shrink:0;background:var(--c-rail);display:flex;flex-direction:column}
+.brand{height:56px;flex-shrink:0;padding:0 16px;display:flex;align-items:center;gap:10px;box-shadow:inset 0 -1px 0 0 var(--c-border-head)}
+.brand .name{font-family:var(--f-display);font-size:15px;font-weight:700;color:var(--c-tp);line-height:20px}
+.brand .ver{font-family:var(--f-mono);font-size:10px;color:var(--c-tm);line-height:13px}
+.btn-new{width:100%;height:40px;flex-shrink:0;border-radius:8px;background:var(--c-emerald);display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-new span{font-size:14px;font-weight:500;color:var(--c-base)}
+.channel-wrap{flex-shrink:0;padding:8px 12px 0}
+.channel{width:100%;padding:10px;border-radius:8px;background:var(--c-rail);box-shadow:inset 0 0 0 1px var(--c-chip);display:flex;flex-direction:column;gap:3px;text-align:left}
+.channel .row{display:flex;align-items:center;gap:8px}
+.channel .t{font-size:14px;font-weight:500;color:var(--c-tp);line-height:18px}
+.channel .tag{margin-left:auto;font-family:var(--f-mono);font-size:10px;color:var(--c-tm);line-height:12px}
+.channel .scopes{font-size:10px;color:var(--c-tm);line-height:12px}
+.nav{display:flex;flex-direction:column;gap:4px;padding:12px}
+.nav-row{width:100%;height:38px;border-radius:8px;background:transparent;padding:0 10px;display:flex;align-items:center;gap:12px}
+.nav-row.active{background:var(--c-selected)}
+.nav-row .bar{width:3px;height:16px;border-radius:1.5px;background:var(--c-emerald);flex-shrink:0}
+.nav-row .lbl{font-size:14px;color:var(--c-ts)}
+.nav-row.active .lbl{font-weight:500;color:var(--c-tp)}
+.nav-badge{margin-left:2px;padding:0 6px;height:18px;border-radius:9px;background:rgba(217,119,6,.15);border:1px solid rgba(217,119,6,.3);display:inline-flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:11px;color:#d97706;gap:4px}
+.nav-badge .d{width:6px;height:6px;border-radius:3px;background:#d97706}
+.rail-gap{height:24px;flex-shrink:0}
+.projects{display:flex;flex-direction:column;gap:6px;padding:8px}
+.projects .head{display:flex;align-items:center;justify-content:space-between;padding:0 4px}
+.projects .head span{font-size:11px;color:var(--c-tm);line-height:13px}
+.projects .head button{font-size:12px;color:var(--c-tm);padding:2px 4px;line-height:1}
+.proj-row{height:34px;border-radius:8px;background:transparent;padding:0 10px;display:flex;align-items:center;gap:8px;cursor:pointer}
+.proj-row.on{background:var(--c-surface);box-shadow:inset 0 0 0 1px var(--c-proj-active)}
+.proj-row .dot{width:7px;height:7px;border-radius:3.5px;flex-shrink:0}
+.proj-row .pn{flex:1;font-size:13px;color:var(--c-ts);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.proj-row.on .pn{font-weight:500;color:var(--c-tp)}
+.proj-row .ct{font-family:var(--f-mono);font-size:10px;color:var(--c-tm)}
+
+/* ---------- workspace / topbar ---------- */
+.ws{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--c-base)}
+.topbar{height:56px;flex-shrink:0;display:flex;align-items:center;gap:12px;padding:0 20px;box-shadow:inset 0 -1px 0 0 var(--c-border-head)}
+.proj-switch{height:34px;border-radius:8px;background:var(--c-surface);box-shadow:inset 0 0 0 1px var(--c-chip);padding:0 12px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.proj-switch span{font-size:14px;font-weight:500;color:var(--c-tp)}
+.topbar .grow{flex:1;min-width:0}
+.pill{height:30px;border-radius:15px;background:var(--c-surface);box-shadow:inset 0 0 0 1px var(--c-chip);padding:0 10px;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.pill .dot{width:7px;height:7px;border-radius:3.5px;flex-shrink:0}
+.pill .n{font-family:var(--f-mono);font-size:12px;color:var(--c-tp)}
+.pill .s{font-family:var(--f-mono);font-size:12px;color:var(--c-tm)}
+.pill.idle .n{color:var(--c-ts)}
+.avatar{width:32px;height:32px;border-radius:16px;background:var(--c-avatar);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.avatar span{font-family:var(--f-display);font-size:12px;font-weight:700;color:var(--c-tp)}
+
+/* ---------- dock ---------- */
+.dock{flex-shrink:0;background:var(--c-base);padding:14px 24px 16px;display:flex;flex-direction:column;gap:12px}
+.dock .rule{height:1px;background:var(--c-border)}
+.dock .selrow{display:flex;align-items:center;gap:10px}
+.dchip{height:34px;border-radius:8px;box-shadow:inset 0 0 0 1px var(--c-chip);padding:0 10px;display:flex;align-items:center;gap:8px;flex-shrink:0}
+.dchip .dot{width:7px;height:7px;border-radius:3.5px;background:var(--c-emerald);flex-shrink:0}
+.dchip .n{font-family:var(--f-mono);font-size:13px;color:var(--c-tp)}
+.dchip.model .n{color:var(--c-blue)}
+.dchip .caret{font-size:12px;color:var(--c-ts);line-height:1}
+.dock .grow{flex:1;min-width:0}
+.scopes-row{display:flex;align-items:center;gap:6px}
+.scope{height:26px;border-radius:6px;padding:0 10px;background:var(--c-rail);box-shadow:inset 0 0 0 1px var(--c-chip);display:flex;align-items:center;flex-shrink:0}
+.scope span{font-size:11px;color:var(--c-ts);white-space:nowrap}
+.scope.on{background:var(--c-selected);box-shadow:inset 0 0 0 1px var(--c-emerald-edge)}
+.scope.on span{font-weight:500;color:var(--c-emerald)}
+.inputrow{display:flex;align-items:center;gap:10px}
+.inputbox{flex:1;min-width:0;height:48px;border-radius:10px;background:var(--c-rail);box-shadow:inset 0 0 0 1px var(--c-chip);padding:0 16px;display:flex;align-items:center}
+.inputbox input{flex:1;font-size:13px;color:var(--c-tp)}
+.inputbox input::placeholder{color:var(--c-tm)}
+.send{width:48px;height:48px;border-radius:10px;background:var(--c-emerald);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* ---------- inspector frame ---------- */
+.inspector{width:360px;flex-shrink:0;background:#10141c;box-shadow:inset 1px 0 0 0 var(--c-border-head);display:flex;flex-direction:column;min-height:0}
+.insp-head{height:56px;flex-shrink:0;padding:0 18px;display:flex;align-items:center;gap:8px;box-shadow:inset 0 -1px 0 0 var(--c-border-head)}
+.insp-head .t{font-size:14px;font-weight:600;color:var(--c-tp);line-height:17px}
+.insp-head .grow{flex:1}
+
+/* ---------- team assets page ---------- */
+.main{flex:1;min-height:0;display:flex;flex-direction:column;padding:20px;gap:20px;overflow:hidden;background:var(--c-base)}
+.page-title{font-size:24px;font-weight:600;color:var(--c-tp);line-height:30px}
+.page-sub{font-size:13px;color:var(--c-ts);line-height:19px}
+.title-block{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+
+.filter{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.tab{height:30px;border-radius:6px;background:var(--c-surface);padding:0 12px;font-size:13px;color:var(--c-ts);line-height:1}
+.tab.on{background:var(--c-selected);font-family:var(--f-mono);color:var(--c-emerald)}
+.filter .grow{flex:1;min-width:0}
+.chip{height:30px;border-radius:6px;background:var(--c-surface);box-shadow:inset 0 0 0 1px var(--c-chip);padding:0 8px;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.chip span{font-size:12px;color:var(--c-ts);line-height:1}
+.finder{width:180px;height:30px;border-radius:6px;background:var(--c-surface);box-shadow:inset 0 0 0 1px var(--c-chip);padding:0 8px;display:flex;align-items:center;gap:6px;flex-shrink:0}
+.finder input{flex:1;min-width:0;font-size:12px;color:var(--c-tp)}
+.finder input::placeholder{color:var(--c-tm)}
+
+.health{border-radius:8px;background:var(--c-warn-well);padding:9px 12px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.health .bang{font-family:var(--f-mono);font-size:11px;color:var(--c-amber);line-height:14px}
+.health .scope-name{font-size:11px;color:var(--c-tp);line-height:14px}
+.health .grow{flex:1;min-width:0}
+.health .issue{font-size:11px;color:var(--c-amber);line-height:14px;white-space:nowrap}
+
+.grid{flex:1;min-height:0;display:flex;flex-wrap:wrap;align-content:flex-start;gap:16px;overflow:hidden}
+.acard{width:250px;flex-shrink:0;border-radius:12px;background:var(--c-surface);box-shadow:inset 0 0 0 1px var(--c-divider);padding:16px;display:flex;flex-direction:column;gap:10px}
+.acard .top{display:flex;align-items:center;gap:8px}
+.acard .top .grow{flex:1}
+.badge{height:20px;border-radius:5px;padding:0 6px;display:inline-flex;align-items:center;font-family:var(--f-mono);font-size:10px;line-height:1}
+.badge.rule{color:var(--c-amber);background:var(--c-warn-well);box-shadow:inset 0 0 0 1px var(--c-amber)}
+.badge.skill{color:var(--c-emerald);background:var(--c-selected);box-shadow:inset 0 0 0 1px var(--c-emerald-edge)}
+.badge.command{color:var(--c-blue);background:var(--c-cmd-well);box-shadow:inset 0 0 0 1px var(--c-blue)}
+.badge.mcp{color:var(--c-teal);background:var(--c-mcp-well);box-shadow:inset 0 0 0 1px var(--c-teal)}
+.an{font-size:14px;font-weight:500;color:var(--c-tp);line-height:16px}
+.ad{font-size:12px;color:var(--c-ts);line-height:18px}
+.meta{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.meta .v{font-family:var(--f-mono);font-size:10px;color:var(--c-tm);line-height:14px}
+.meta .u{font-family:var(--f-mono);font-size:10px;color:var(--c-ts);line-height:14px}
+.meta .u.block{color:var(--c-amber)}
+
+/* ---------- asset preview panel ---------- */
+.pv-body{flex:1;min-height:0;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:20px}
+.pv-info{display:flex;flex-direction:column;gap:12px}
+.pv-info .row{display:flex;align-items:center;gap:8px}
+.pv-info .row .grow{flex:1}
+.pv-ver{font-family:var(--f-mono);font-size:11px;color:var(--c-tm);line-height:14px}
+.pv-name{font-size:18px;font-weight:500;color:var(--c-tp);line-height:24px}
+.pv-desc{font-size:13px;color:var(--c-ts);line-height:19px}
+.pv-code-group{display:flex;flex-direction:column;gap:8px}
+.pv-label{font-size:11px;color:var(--c-tm);line-height:14px}
+.codewell{border-radius:8px;background:var(--c-base);box-shadow:inset 0 0 0 1px var(--c-divider);padding:12px;display:flex;flex-direction:column;gap:6px}
+.codewell div{font-family:var(--f-mono);font-size:11px;color:var(--c-ts);line-height:15px;white-space:pre}
+.pv-notice{height:34px;border-radius:8px;background:rgba(52,211,153,0.10);box-shadow:inset 0 0 0 1px var(--c-emerald);padding:0 10px;display:flex;align-items:center;gap:8px}
+.pv-notice span{font-size:12px;color:var(--c-emerald);line-height:15px}
+.pv-deliver{height:36px;border-radius:8px;background:var(--c-emerald);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.pv-deliver span{font-size:12px;font-weight:500;color:var(--c-base);line-height:15px}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ LEFT RAIL ============ -->
+  <aside class="rail">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 20 20" fill="none">
+        <circle cx="10" cy="10" r="8.5" stroke="#34D399" stroke-width="3" stroke-dasharray="40.06 13.35"/>
+        <circle cx="10" cy="10" r="3" fill="#34D399"/>
+      </svg>
+      <span class="name">LoopDesk</span>
+      <span class="ver">v0.2</span>
+    </div>
+
+    <button class="btn-new" data-dom-id="new-task-top">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#0b0e14" stroke-width="2.4" stroke-linecap="round"/></svg>
+      <span>新建任务</span>
+    </button>
+
+    <div class="channel-wrap">
+      <button class="channel" data-dom-id="open-channel">
+        <div class="row">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2.6 4.6c0-1.1.9-2 2-2h8.8c1.1 0 2 .9 2 2v5.6c0 1.1-.9 2-2 2H7.4l-3.4 2.6v-2.6h-.4c-1.1 0-2-.9-2-2V4.6z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>
+          <span class="t">会话</span>
+          <span class="tag">渠道</span>
+        </div>
+        <span class="scopes">需求澄清 · 背景查找 · 任务澄清 · 任务实施</span>
+      </button>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-row" data-dom-id="nav-board">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="color:var(--c-ts)"><rect x="2.6" y="3" width="3.75" height="12" rx="1.125" stroke="currentColor" stroke-width="1.8"/><rect x="7.1" y="3" width="3.75" height="8.25" rx="1.125" stroke="currentColor" stroke-width="1.8"/><rect x="11.9" y="3" width="3" height="10.5" rx="1.125" stroke="currentColor" stroke-width="1.8"/></svg>
+        <span class="lbl">任务看板</span>
+        <span class="nav-badge"><span class="d"></span>12</span>
+      </button>
+      <button class="nav-row active" data-dom-id="nav-assets">
+        <span class="bar"></span>
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="color:var(--c-emerald)"><path d="M9 2.2l6.4 3.1L9 8.4 2.6 5.3 9 2.2z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M2.6 9.1L9 12.2l6.4-3.1" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M2.6 12.4L9 15.5l6.4-3.1" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        <span class="lbl">团队资产</span>
+      </button>
+      <button class="nav-row" data-dom-id="nav-control">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style="color:var(--c-ts)"><path d="M3 6h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="7.2" cy="6" r="1.9" stroke="currentColor" stroke-width="1.7"/><path d="M3 12h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="11.4" cy="12" r="1.9" stroke="currentColor" stroke-width="1.7"/></svg>
+        <span class="lbl">控制中心</span>
+      </button>
+      <button class="nav-row" data-dom-id="nav-settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="color:var(--c-ts)"><circle cx="12" cy="12" r="3.1" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.6l1.7 2.6 3-.7.5 3 2.9 1-1.5 2.6 1.5 2.6-2.9 1-.5 3-3-.7L12 21.4l-1.7-2.6-3 .7-.5-3-2.9-1L5.4 13 3.9 10.4l2.9-1 .5-3 3 .7L12 2.6z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+        <span class="lbl">设置</span>
+      </button>
+    </nav>
+
+    <div class="rail-gap"></div>
+
+    <div class="projects">
+      <div class="head"><span>项目</span><button data-dom-id="add-project">+</button></div>
+      <div class="proj-row"><span class="dot" style="background:var(--c-blue)"></span><span class="pn">Nimbus CLI</span><span class="ct">4</span></div>
+      <div class="proj-row"><span class="dot" style="background:var(--c-amber)"></span><span class="pn">Atlas Gateway</span><span class="ct">3</span></div>
+      <div class="proj-row on"><span class="dot" style="background:var(--c-emerald)"></span><span class="pn">Acme Platform</span><span class="ct">5</span></div>
+    </div>
+  </aside>
+
+  <!-- ============ WORKSPACE ============ -->
+  <div class="ws">
+    <header class="topbar">
+      <button class="proj-switch" data-dom-id="proj-switch">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="color:var(--c-ts)"><path d="M3 6.5A1.5 1.5 0 014.5 5h4l1.8 2h9.2A1.5 1.5 0 0121 8.5v9A1.5 1.5 0 0119.5 19h-15A1.5 1.5 0 013 17.5v-11z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>
+        <span>Acme Platform</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="color:var(--c-ts)"><path d="M6 9.5l6 6 6-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="grow"></div>
+      <div class="pill" data-dom-id="pill-claude"><span class="dot" style="background:var(--c-emerald)"></span><span class="n">claude</span><span class="s">· 3 运行</span></div>
+      <div class="pill idle" data-dom-id="pill-codex"><span class="dot" style="background:var(--c-tm)"></span><span class="n">codex</span><span class="s">· 空闲</span></div>
+      <div class="avatar" data-dom-id="user-avatar"><span>FY</span></div>
+    </header>
+
+    <div class="main">
+
+      <!-- 标题区 -->
+      <div class="title-block">
+        <h1 class="page-title" data-dom-id="page-title">团队资产</h1>
+        <p class="page-sub">团队统一查看 Rules / Commands / Skills / MCP 等 AI 资产，按项目自动筛选，支持经 git 通道一键下发。</p>
+      </div>
+
+      <!-- 过滤行 -->
+      <div class="filter">
+        <button class="tab on mono" data-dom-id="tab-rules">Rules · 12</button>
+        <button class="tab" data-dom-id="tab-commands">Commands · 8</button>
+        <button class="tab" data-dom-id="tab-skills">Skills · 34</button>
+        <button class="tab" data-dom-id="tab-mcp">MCP · 5</button>
+        <span class="grow"></span>
+        <button class="chip" data-dom-id="filter-project">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="color:var(--c-ts)"><path d="M3 6.5A1.5 1.5 0 014.5 5h4l1.8 2h9.2A1.5 1.5 0 0121 8.5v9A1.5 1.5 0 0119.5 19h-15A1.5 1.5 0 013 17.5v-11z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+          <span>Acme Platform</span>
+        </button>
+        <div class="finder">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="color:var(--c-tm)"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/><path d="M16 16l4.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <input data-dom-id="filter-search" placeholder="搜索资产…">
+        </div>
+      </div>
+
+      <!-- 作用域健康条 -->
+      <div class="health" data-dom-id="scope-health-bar">
+        <span class="bang">!</span>
+        <span class="scope-name">作用域 · codex-cli（CODEX_HOME/skills）</span>
+        <span class="grow"></span>
+        <span class="issue">阻塞 2 项：作用域标记缺失 · 技能包版本落后于控制面</span>
+      </div>
+
+      <!-- 资产网格 -->
+      <div class="grid">
+
+        <div class="acard" style="height:130px" data-dom-id="asset-card-1">
+          <div class="top">
+            <span class="badge rule">Rule</span>
+            <span class="grow"></span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="color:var(--c-tm)"><rect x="5" y="10.5" width="14" height="9.5" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10.5V8a4 4 0 018 0v2.5" stroke="currentColor" stroke-width="1.8"/></svg>
+          </div>
+          <span class="an">Python 代码风格 Rule</span>
+          <span class="ad">缩进 4 空格、类型注解、无 print 调试。</span>
+          <div class="meta">
+            <span class="v">Acme · v2.1</span>
+            <span class="u">used 47</span>
+          </div>
+        </div>
+
+        <div class="acard" style="height:148px" data-dom-id="asset-card-2">
+          <div class="top">
+            <span class="badge skill">Skill</span>
+            <span class="grow"></span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="color:var(--c-tm)"><rect x="5" y="10.5" width="14" height="9.5" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10.5V8a4 4 0 018 0v2.5" stroke="currentColor" stroke-width="1.8"/></svg>
+          </div>
+          <span class="an">issue-fix 长任务模板</span>
+          <span class="ad">自动修复 issue 的标准骨架，含 evidence 收集与 quota gate。</span>
+          <div class="meta">
+            <span class="v">控制面投递 · v0.5.0</span>
+            <span class="u block">阻塞</span>
+          </div>
+        </div>
+
+        <div class="acard" style="height:148px" data-dom-id="asset-card-3">
+          <div class="top">
+            <span class="badge command">Command</span>
+            <span class="grow"></span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="color:var(--c-tm)"><rect x="5" y="10.5" width="14" height="9.5" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10.5V8a4 4 0 018 0v2.5" stroke="currentColor" stroke-width="1.8"/></svg>
+          </div>
+          <span class="an">run-tests Command</span>
+          <span class="ad">在隔离 worktree 中运行 pytest 并回写结果。</span>
+          <div class="meta">
+            <span class="v">Acme · v1.3</span>
+            <span class="u">used 89</span>
+          </div>
+        </div>
+
+        <div class="acard" style="height:130px" data-dom-id="asset-card-4">
+          <div class="top">
+            <span class="badge skill">Skill</span>
+            <span class="grow"></span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="color:var(--c-tm)"><rect x="5" y="10.5" width="14" height="9.5" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10.5V8a4 4 0 018 0v2.5" stroke="currentColor" stroke-width="1.8"/></svg>
+          </div>
+          <span class="an">pr-commit 模板</span>
+          <span class="ad">生成 PR 描述、打磨提交信息、触发 CI。</span>
+          <div class="meta">
+            <span class="v">Acme · v1.2</span>
+            <span class="u">used 72</span>
+          </div>
+        </div>
+
+        <div class="acard" style="height:130px" data-dom-id="asset-card-5">
+          <div class="top">
+            <span class="badge mcp">MCP</span>
+            <span class="grow"></span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="color:var(--c-tm)"><rect x="5" y="10.5" width="14" height="9.5" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10.5V8a4 4 0 018 0v2.5" stroke="currentColor" stroke-width="1.8"/></svg>
+          </div>
+          <span class="an">JIRA MCP 连接器</span>
+          <span class="ad">同步 issue、回写进度、索引项目知识。</span>
+          <div class="meta">
+            <span class="v">Acme · v0.9</span>
+            <span class="u">used 56</span>
+          </div>
+        </div>
+
+        <div class="acard" style="height:130px" data-dom-id="asset-card-6">
+          <div class="top">
+            <span class="badge rule">Rule</span>
+            <span class="grow"></span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="color:var(--c-tm)"><rect x="5" y="10.5" width="14" height="9.5" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10.5V8a4 4 0 018 0v2.5" stroke="currentColor" stroke-width="1.8"/></svg>
+          </div>
+          <span class="an">API 错误处理 Rule</span>
+          <span class="ad">统一 4xx/5xx 响应、trace_id 透传。</span>
+          <div class="meta">
+            <span class="v">Atlas · v1.0</span>
+            <span class="u">used 33</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="dock">
+      <div class="rule"></div>
+      <div class="selrow">
+        <div class="dchip" data-dom-id="dock-agent"><span class="dot"></span><span class="n">claude</span><span class="caret">▾</span></div>
+        <div class="dchip model" data-dom-id="dock-model"><span class="n">opus-4</span><span class="caret">▾</span></div>
+        <div class="grow"></div>
+        <div class="scopes-row">
+          <button class="scope" data-dom-id="scope-require"><span>需求澄清</span></button>
+          <button class="scope" data-dom-id="scope-research"><span>背景查找</span></button>
+          <button class="scope" data-dom-id="scope-clarify"><span>任务澄清</span></button>
+          <button class="scope on" data-dom-id="scope-execute"><span>任务实施</span></button>
+        </div>
+      </div>
+      <div class="inputrow">
+        <div class="inputbox"><input data-dom-id="dock-input" placeholder="描述你的任务，或先与 Agent / 模型澄清需求…"></div>
+        <button class="send" data-dom-id="dock-send">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 19.5V5M6 11l6-6 6 6" stroke="#0b0e14" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ASSET PREVIEW ============ -->
+  <aside class="inspector">
+    <div class="insp-head">
+      <span class="t">资产预览</span>
+      <span class="grow"></span>
+      <button data-dom-id="preview-close" title="关闭预览">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="color:var(--c-tm)"><path d="M5.5 5.5l13 13M18.5 5.5l-13 13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="pv-body">
+
+      <!-- 顶部信息 -->
+      <div class="pv-info">
+        <div class="row">
+          <span class="badge skill">Skill</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="color:var(--c-tm)"><rect x="5" y="10.5" width="14" height="9.5" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10.5V8a4 4 0 018 0v2.5" stroke="currentColor" stroke-width="1.8"/></svg>
+          <span class="grow"></span>
+          <span class="pv-ver">Acme · v1.2</span>
+        </div>
+        <span class="pv-name">pr-commit 模板</span>
+        <span class="pv-desc">生成 PR 描述、打磨提交信息、触发 CI。</span>
+      </div>
+
+      <!-- 内容预览 -->
+      <div class="pv-code-group">
+        <span class="pv-label">内容预览</span>
+        <div class="codewell">
+          <div>name: pr-commit</div>
+          <div>runtime: loopdesk</div>
+          <div>agents:</div>
+          <div>  - claude</div>
+          <div>  - codex</div>
+          <div>stop_condition: evidence &gt; 0.9</div>
+        </div>
+      </div>
+
+      <!-- 提示条 -->
+      <div class="pv-notice">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="color:var(--c-emerald)"><rect x="5" y="10.5" width="14" height="9.5" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 10.5V8a4 4 0 018 0v2.5" stroke="currentColor" stroke-width="1.8"/></svg>
+        <span>团队资产 · 可下发（经 git 版本化分发）</span>
+      </div>
+
+      <!-- 底部按钮 -->
+      <button class="pv-deliver" data-dom-id="deliver-button">
+        <span>一键下发到团队</span>
+      </button>
+
+    </div>
+  </aside>
+
+</div>
+</body>
+</html>
