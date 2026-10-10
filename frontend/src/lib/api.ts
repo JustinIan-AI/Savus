@@ -317,20 +317,32 @@ export async function listMarketplaceAssets(role?: string) {
   return res.json();
 }
 
-export async function distributeAsset(assetId: string, targetPath: string) {
+export async function distributeAsset(asset: any, targetPath: string = ".") {
+  const assetPayload = typeof asset === "string" ? { id: asset, name: asset, type: "rule", content: "" } : asset;
   const res = await fetch(`${API_BASE}/assets/distribute`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ asset_id: assetId, target_path: targetPath, repo_root: "." }),
+    body: JSON.stringify({ asset: assetPayload, target_dir: targetPath }),
   });
   return res.json();
 }
 
 export async function executeTemplateStep(payload: FlowStepPayload) {
-  const res = await fetch(`${API_BASE}/templates/execute`, {
+  const res = await fetch(`${API_BASE}/templates/step`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   return res.json();
+}
+
+export async function fetchLearningHealth(): Promise<{ ok: boolean; health?: { score: number; stale_rules_count: number; rejections_count: number } } | null> {
+  try {
+    const res = await fetch(`${API_BASE}/governance/learning/health`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (err) {
+    console.warn("fetchLearningHealth fallback:", err);
+    return null;
+  }
 }

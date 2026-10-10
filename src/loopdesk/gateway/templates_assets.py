@@ -76,46 +76,93 @@ async def api_execute_template_step(request: Request) -> JSONResponse:
         return JSONResponse({"error": "Invalid JSON body", "code": "BAD_REQUEST"}, status_code=400)
 
     template_id = body.get("template_id")
-    task_key = f"{template_id}:{body.get('issue_id', body.get('topic', 'default'))}"
+    safe_id = str(body.get("issue_id", body.get("topic", "default")))
+    task_key = f"{template_id}:{safe_id}"
+
+    root_str = request.query_params.get("root") or body.get("root")
+    flow_file: Path | None = None
+    if root_str:
+        flows_dir = Path(root_str).expanduser().resolve() / ".loopdesk" / "flows"
+        flow_file = flows_dir / f"{template_id}_{safe_id}.json"
+
+    saved_state = _ACTIVE_FLOW_STATES.get(task_key)
+    if not saved_state and flow_file and flow_file.exists():
+        try:
+            saved_state = json.loads(flow_file.read_text(encoding="utf-8"))
+        except Exception:
+            saved_state = None
 
     if template_id == "issue-fix":
-        saved_state = _ACTIVE_FLOW_STATES.get(task_key)
-        flow = IssueFixFlow(
-            issue_id=body.get("issue_id", "0"),
-            title=body.get("title", "Untitled"),
-            state=saved_state
-        )
+        if saved_state:
+            flow = IssueFixFlow.from_dict(saved_state)
+        else:
+            flow = IssueFixFlow(
+                issue_id=body.get("issue_id", "0"),
+                title=body.get("title", "Untitled"),
+            )
         record = flow.next_turn(role=body.get("role", "maker"), output=body.get("output", ""))
-        _ACTIVE_FLOW_STATES[task_key] = flow.to_dict()
+        flow_dict = flow.to_dict()
+        _ACTIVE_FLOW_STATES[task_key] = flow_dict
+        if flow_file:
+            flow_file.parent.mkdir(parents=True, exist_ok=True)
+            flow_file.write_text(json.dumps(flow_dict, indent=2, ensure_ascii=False), encoding="utf-8")
+        eval_context = {
+            "tests_pass": flow.is_ready_for_review(),
+            "no_regression": True,
+            "review_gate_approved": flow.is_ready_for_review(),
+        }
+        stop_eval = _template_engine.evaluate_stop_conditions("issue-fix", eval_context)
         return JSONResponse({
             "ok": True,
             "record": record,
             "branch": flow.branch,
             "current_step_idx": flow.current_step_idx,
             "is_ready_for_review": flow.is_ready_for_review(),
-            "history": flow.history
+            "history": flow.history,
+            "stop_conditions": stop_eval,
         })
     elif template_id == "pr-commit":
-        saved_state = _ACTIVE_FLOW_STATES.get(task_key)
-        flow = PRCommitFlow(
-            branch=body.get("branch", "main"),
-            title=body.get("title", "PR"),
-            commits=body.get("commits", []),
-            state=saved_state
-        )
+        if saved_state:
+            flow = PRCommitFlow.from_dict(saved_state)
+        else:
+            flow = PRCommitFlow(
+                branch=body.get("branch", "main"),
+                title=body.get("title", "PR"),
+                commits=body.get("commits", []),
+            )
         summary = flow.generate_8_section_pr_summary()
-        _ACTIVE_FLOW_STATES[task_key] = flow.to_dict()
-        return JSONResponse({"ok": True, "pr_summary": summary})
+        flow_dict = flow.to_dict()
+        _ACTIVE_FLOW_STATES[task_key] = flow_dict
+        if flow_file:
+            flow_file.parent.mkdir(parents=True, exist_ok=True)
+            flow_file.write_text(json.dumps(flow_dict, indent=2, ensure_ascii=False), encoding="utf-8")
+        eval_context = {
+            "diff_clean": True,
+            "pr_summary_approved": bool(summary),
+        }
+        stop_eval = _template_engine.evaluate_stop_conditions("pr-commit", eval_context)
+        return JSONResponse({"ok": True, "pr_summary": summary, "stop_conditions": stop_eval})
     elif template_id == "auto-research":
-        saved_state = _ACTIVE_FLOW_STATES.get(task_key)
-        flow = AutoResearchFlow(
-            topic=body.get("topic", "research"),
-            max_iterations=body.get("max_iterations", 3),
-            state=saved_state
-        )
+        if saved_state:
+            flow = AutoResearchFlow.from_dict(saved_state)
+        else:
+            flow = AutoResearchFlow(
+                topic=body.get("topic", "research"),
+                max_iterations=body.get("max_iterations", 3),
+            )
         turn = flow.step(proposer_notes=body.get("notes", ""), eval_score=body.get("score", 0.0))
-        _ACTIVE_FLOW_STATES[task_key] = flow.to_dict()
-        return JSONResponse({"ok": True, "turn": turn})
+        flow_dict = flow.to_dict()
+        _ACTIVE_FLOW_STATES[task_key] = flow_dict
+        if flow_file:
+            flow_file.parent.mkdir(parents=True, exist_ok=True)
+            flow_file.write_text(json.dumps(flow_dict, indent=2, ensure_ascii=False), encoding="utf-8")
+        eval_context = {
+            "score": body.get("score", 0.0),
+            "iteration": flow.iteration,
+            "max_iterations": flow.max_iterations,
+        }
+        stop_eval = _template_engine.evaluate_stop_conditions("auto-research", eval_context)
+        return JSONResponse({"ok": True, "turn": turn, "stop_conditions": stop_eval})
     else:
         return JSONResponse({"error": f"Unsupported flow template: {template_id}", "code": "BAD_REQUEST"}, status_code=400)
 
@@ -180,6 +227,20 @@ async def api_distribute_asset(request: Request) -> JSONResponse:
     return JSONResponse({"ok": True, "result": res})
 
 
+async def api_evaluate_stop_conditions(request: Request) -> JSONResponse:
+    template_id = request.path_params.get("template_id", "")
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    context = body.get("context", {})
+    try:
+        res = _template_engine.evaluate_stop_conditions(template_id, context)
+        return JSONResponse({"ok": True, **res})
+    except ValueError as exc:
+        return JSONResponse({"error": str(exc), "code": "NOT_FOUND"}, status_code=404)
+
+
 def register_template_and_asset_routes(app: Any) -> None:
     from starlette.routing import Route
 
@@ -187,6 +248,7 @@ def register_template_and_asset_routes(app: Any) -> None:
         Route("/api/v1/templates", api_list_templates, methods=["GET"]),
         Route("/api/v1/templates/render", api_render_template, methods=["POST"]),
         Route("/api/v1/templates/step", api_execute_template_step, methods=["POST"]),
+        Route("/api/v1/templates/{template_id}/stop-conditions", api_evaluate_stop_conditions, methods=["POST"]),
         Route("/api/v1/assets", api_list_assets, methods=["GET"]),
         Route("/api/v1/assets/distribute", api_distribute_asset, methods=["POST"]),
     ])

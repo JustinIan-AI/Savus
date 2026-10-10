@@ -32,7 +32,14 @@
       "canvasData": {
         "x": 1600,
         "y": 0,
-        "group": 0
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-4053a15f",
+          "measuredAt": 1791536599677
+        }
       },
       "devMetadata": {
         "htmlSrc": "pages/team-assets.html",
@@ -48,7 +55,14 @@
       "canvasData": {
         "x": 2220,
         "y": 12,
-        "group": 0
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-d9f60614",
+          "measuredAt": 1791536599677
+        }
       },
       "devMetadata": {
         "htmlSrc": "pages/settings-agent.html",
@@ -64,7 +78,14 @@
       "canvasData": {
         "x": 2916,
         "y": 12,
-        "group": 0
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-e448ba29",
+          "measuredAt": 1791536599677
+        }
       },
       "devMetadata": {
         "htmlSrc": "pages/settings-mcp.html",
@@ -80,7 +101,14 @@
       "canvasData": {
         "x": 840,
         "y": 456,
-        "group": 0
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-80fd5346",
+          "measuredAt": 1791536599677
+        }
       },
       "devMetadata": {
         "htmlSrc": "pages/settings-other.html",
@@ -96,7 +124,14 @@
       "canvasData": {
         "x": 1600,
         "y": 492,
-        "group": 0
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-abbbd42d",
+          "measuredAt": 1791536599677
+        }
       },
       "devMetadata": {
         "htmlSrc": "pages/session-drawer.html",
@@ -112,7 +147,14 @@
       "canvasData": {
         "x": 2220,
         "y": 516,
-        "group": 0
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-48229882",
+          "measuredAt": 1791536599677
+        }
       },
       "devMetadata": {
         "htmlSrc": "pages/modal-add-agent.html",
@@ -128,7 +170,14 @@
       "canvasData": {
         "x": 2916,
         "y": 516,
-        "group": 0
+        "group": 0,
+        "layoutSnapshot": {
+          "version": 1,
+          "contentHeight": 900,
+          "viewportWidth": 1440,
+          "sourceHash": "fnv1a-13d00b9c",
+          "measuredAt": 1791536599677
+        }
       },
       "devMetadata": {
         "htmlSrc": "pages/modal-add-connector.html",

@@ -7,9 +7,14 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from loopdesk.orchestration.pty_manager import PTYSessionManager
 from loopdesk.orchestration.context_handoff import ContextHandoffManager
+from loopdesk.memory import ContextResolver, HandoffEnveloper
+from loopdesk.orchestration.parallel import WorktreeFanOutExecutor
 
 pty_manager = PTYSessionManager()
 handoff_manager = ContextHandoffManager()
+context_resolver = ContextResolver()
+handoff_enveloper = HandoffEnveloper()
+fanout_executor = WorktreeFanOutExecutor()
 
 # Strict executable whitelist for PTY creation
 ALLOWED_COMMANDS = {
@@ -17,11 +22,6 @@ ALLOWED_COMMANDS = {
     "/bin/bash",
     "/bin/sh",
     "zsh",
-    "bash",
-    "sh",
-    "python",
-    "python3",
-    "node",
     "codex",
     "claude",
     "pi",
@@ -29,16 +29,15 @@ ALLOWED_COMMANDS = {
 }
 
 def _verify_pty_auth(request: Request) -> bool:
-    """Enforce token or admin header authentication for PTY creation."""
+    """Enforce token or admin header authentication for PTY operations."""
     auth_header = request.headers.get("X-LoopDesk-Admin-Key") or request.headers.get("Authorization")
-    expected_key = os.environ.get("LOOPDESK_ADMIN_KEY", "loopdesk-admin-secret")
+    expected_key = os.environ.get("LOOPDESK_ADMIN_KEY")
+    if not expected_key:
+        return False
     if auth_header:
         token = auth_header.replace("Bearer ", "").strip()
         if token == expected_key:
             return True
-    # If request is from internal test/localhost and explicit test bypass is active
-    if request.headers.get("X-LoopDesk-Test-Auth") == "test-authorized":
-        return True
     return False
 
 async def api_create_pty_session(request: Request) -> JSONResponse:
@@ -77,6 +76,8 @@ async def api_create_pty_session(request: Request) -> JSONResponse:
     })
 
 async def api_write_pty_session(request: Request) -> JSONResponse:
+    if not _verify_pty_auth(request):
+        return JSONResponse({"error": "Unauthorized PTY operation", "code": "FORBIDDEN"}, status_code=403)
     session_id = request.path_params["session_id"]
     data = await request.json()
     input_str = data.get("input", "")
@@ -88,6 +89,8 @@ async def api_write_pty_session(request: Request) -> JSONResponse:
     return JSONResponse({"ok": True, "written_bytes": written})
 
 async def api_read_pty_session(request: Request) -> JSONResponse:
+    if not _verify_pty_auth(request):
+        return JSONResponse({"error": "Unauthorized PTY operation", "code": "FORBIDDEN"}, status_code=403)
     session_id = request.path_params["session_id"]
     session = pty_manager.get_session(session_id)
     if not session:
@@ -97,6 +100,8 @@ async def api_read_pty_session(request: Request) -> JSONResponse:
     return JSONResponse({"ok": True, "output": output.decode("utf-8", errors="replace")})
 
 async def api_terminate_pty_session(request: Request) -> JSONResponse:
+    if not _verify_pty_auth(request):
+        return JSONResponse({"error": "Unauthorized PTY operation", "code": "FORBIDDEN"}, status_code=403)
     session_id = request.path_params["session_id"]
     pty_manager.terminate_session(session_id)
     return JSONResponse({"ok": True, "terminated": True})
@@ -117,7 +122,41 @@ async def api_context_handoff(request: Request) -> JSONResponse:
     packet = handoff_manager.consume_handoff_packet(token) or {}
     packet["from_agent"] = packet.get("source_agent", source_agent)
     packet["to_agent"] = packet.get("target_agent", target_agent)
-    return JSONResponse({"ok": True, "token": token, "handoff_packet": packet})
+
+    prompt_text = context_data.get("prompt", "")
+    resolved_prompt = context_resolver.resolve_references(prompt_text) if prompt_text else ""
+    envelope = handoff_enveloper.create_package(
+        source_agent=source_agent,
+        destination_agent=target_agent,
+        task_id=task_id,
+        code_diff=context_data.get("code_diff", ""),
+        decisions=context_data.get("decisions", []),
+    )
+    return JSONResponse({
+        "ok": True,
+        "token": token,
+        "handoff_packet": packet,
+        "envelope": envelope,
+        "resolved_prompt": resolved_prompt,
+    })
+
+
+async def api_fanout_execution(request: Request) -> JSONResponse:
+    if not _verify_pty_auth(request):
+        return JSONResponse({"error": "Unauthorized fanout operation", "code": "FORBIDDEN"}, status_code=403)
+    data = await request.json()
+    candidates = data.get("candidates", [])
+    if not candidates:
+        return JSONResponse({"error": "candidates list required", "code": "BAD_REQUEST"}, status_code=400)
+    winner = fanout_executor.select_winner(candidates)
+    return JSONResponse({
+        "ok": True,
+        "winner": {
+            "agent": winner.winner_agent,
+            "worktree": winner.winner_worktree,
+            "score": winner.winning_score,
+        },
+    })
 
 def register_orchestration_routes(app: Any) -> None:
     from starlette.routing import Route
@@ -127,4 +166,5 @@ def register_orchestration_routes(app: Any) -> None:
         Route("/api/v1/orchestration/pty/{session_id}/read", api_read_pty_session, methods=["GET"]),
         Route("/api/v1/orchestration/pty/{session_id}", api_terminate_pty_session, methods=["DELETE"]),
         Route("/api/v1/orchestration/handoff", api_context_handoff, methods=["POST"]),
+        Route("/api/v1/orchestration/fanout", api_fanout_execution, methods=["POST"]),
     ])

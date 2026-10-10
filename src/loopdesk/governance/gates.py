@@ -5,6 +5,7 @@ import fnmatch
 import hashlib
 import json
 import time
+import subprocess
 from dataclasses import asdict, dataclass, field
 from typing import Any, Optional
 
@@ -51,6 +52,8 @@ class GateContext:
     allowed_write_scopes: list[str] = field(default_factory=list)
     consumed_tokens: int = 0
     token_limit: int = 1000000
+    execute_validation: bool = False
+    cwd: Optional[str] = None
 
 
 @dataclass
@@ -93,11 +96,31 @@ class FiveTierGateEngine:
                 failed_gate=GateType.EVIDENCE,
                 reason="Evidence Gate failed: No validation command specified",
             )
-        if ctx.validation_exit_code != 0:
+        exit_code = ctx.validation_exit_code
+        stdout = ctx.validation_stdout
+        if ctx.execute_validation:
+            try:
+                res = subprocess.run(
+                    ctx.validation_command,
+                    shell=True,
+                    capture_output=True,
+                    text=True,
+                    cwd=ctx.cwd,
+                    timeout=30,
+                )
+                exit_code = res.returncode
+                stdout = res.stdout + ("\n" + res.stderr if res.stderr else "")
+            except Exception as exc:
+                return GateVerdict(
+                    passed=False,
+                    failed_gate=GateType.EVIDENCE,
+                    reason=f"Evidence Gate failed: execution error {exc}",
+                )
+        if exit_code != 0:
             return GateVerdict(
                 passed=False,
                 failed_gate=GateType.EVIDENCE,
-                reason=f"Evidence Gate failed: validation command returned exit code {ctx.validation_exit_code}",
+                reason=f"Evidence Gate failed: validation command returned exit code {exit_code}",
             )
         passed_gates.append(GateType.EVIDENCE.value)
 
@@ -127,8 +150,8 @@ class FiveTierGateEngine:
 
         # All passed -> Issue ValidationReceipt
         now = time.time()
-        stdout_hash = hashlib.sha256(ctx.validation_stdout.encode("utf-8")).hexdigest()
-        payload = f"{ctx.task_id}:{ctx.project_id}:{ctx.validation_command}:{ctx.validation_exit_code}:{stdout_hash}:{now}"
+        stdout_hash = hashlib.sha256(stdout.encode("utf-8")).hexdigest()
+        payload = f"{ctx.task_id}:{ctx.project_id}:{ctx.validation_command}:{exit_code}:{stdout_hash}:{now}"
         digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
         receipt = ValidationReceipt(
@@ -136,7 +159,7 @@ class FiveTierGateEngine:
             project_id=ctx.project_id,
             timestamp=now,
             validation_command=ctx.validation_command,
-            exit_code=ctx.validation_exit_code,
+            exit_code=exit_code,
             stdout_hash=stdout_hash,
             sha256_digest=digest,
             operator_decision=ctx.operator_decision,

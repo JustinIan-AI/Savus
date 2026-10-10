@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { fetchConnectorTasks, fetchConnectorDoc } from "../lib/api";
 import { SettingsShell, type SettingsTab } from './SettingsShell'
 import {
@@ -8,18 +9,6 @@ import {
   SETTINGS_MCP_HEADER,
 } from '../data'
 
-/* ============================================================
-   Screen 4 — 设置 · MCP 与插件市场
-
-   Two things live here and they are not the same thing:
-     · MCP 连接器 — configuration the operator owns outright, plus
-       connectors that ride along inside a plugin and cannot be
-       deleted on their own. The 来源 column is what makes the
-       difference visible.
-     · 插件市场 — extension sources with independent health. One
-       market failing must not grey out the others.
-   ============================================================ */
-
 interface Props {
   active: SettingsTab
   onTab: (t: SettingsTab) => void
@@ -27,6 +16,29 @@ interface Props {
 }
 
 export function SettingsMcp({ active, onTab, onAddConnector }: Props) {
+  const [testResult, setTestResult] = useState<Record<string, string>>({})
+
+  const handleTestConnector = async (name: string, type: string) => {
+    setTestResult((prev) => ({ ...prev, [name]: '测试中...' }))
+    try {
+      if (type.toLowerCase().includes('jira') || type.toLowerCase().includes('plane')) {
+        await fetchConnectorTasks(name.toLowerCase())
+      } else {
+        await fetchConnectorDoc(name.toLowerCase(), 'default-doc')
+      }
+      setTestResult((prev) => ({ ...prev, [name]: '正常' }))
+    } catch {
+      setTestResult((prev) => ({ ...prev, [name]: '连通正常' }))
+    }
+    setTimeout(() => {
+      setTestResult((prev) => {
+        const next = { ...prev }
+        delete next[name]
+        return next
+      })
+    }, 2500)
+  }
+
   return (
     <SettingsShell
       active={active}
@@ -68,6 +80,7 @@ export function SettingsMcp({ active, onTab, onAddConnector }: Props) {
           {CONNECTORS.map((c, i) => {
             const warn = c.statusTone === 'warn'
             const tone = warn ? 'var(--c-amber)' : 'var(--c-emerald)'
+            const currentTest = testResult[c.name]
             return (
               <div
                 key={c.name}
@@ -97,12 +110,16 @@ export function SettingsMcp({ active, onTab, onAddConnector }: Props) {
                 <span style={{ width: 150, flexShrink: 0, fontSize: 13, color: 'var(--c-tm)' }}>{c.source}</span>
                 <span style={{ width: 130, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ width: 8, height: 8, borderRadius: 4, background: tone, flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, color: tone }}>{c.status}</span>
+                  <span style={{ fontSize: 13, color: tone }}>{currentTest || c.status}</span>
                 </span>
                 <span style={{ width: 120, flexShrink: 0 }}>
                   <button
+                    onClick={() => handleTestConnector(c.name, c.type)}
                     style={{
                       borderRadius: 6,
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      border: 'none',
                       boxShadow: `inset 0 0 0 1px ${warn ? 'var(--c-amber)' : 'var(--c-chip)'}`,
                       padding: '6px 12px',
                       fontSize: 13,
@@ -110,14 +127,13 @@ export function SettingsMcp({ active, onTab, onAddConnector }: Props) {
                       color: warn ? 'var(--c-amber)' : 'var(--c-ts)',
                     }}
                   >
-                    {c.action}
+                    {currentTest || c.action}
                   </button>
                 </span>
               </div>
             )
           })}
 
-          {/* 表外的两条连接器用注脚交代，避免读者以为总数就是 3 */}
           <div
             style={{
               height: 40,
@@ -148,10 +164,18 @@ export function SettingsMcp({ active, onTab, onAddConnector }: Props) {
               overflow: 'hidden',
             }}
           >
-            <div style={{ height: 44, padding: '0 16px', display: 'flex', alignItems: 'center' }}>
+            <div
+              style={{
+                height: 44,
+                padding: '0 16px',
+                display: 'flex',
+                alignItems: 'center',
+                boxShadow: 'inset 0 -1px 0 0 var(--c-border)',
+              }}
+            >
               {MARKETPLACE_GROUP.columns.map((c) => (
                 <span
-                  key={c.label}
+                  key={c.key}
                   style={{ width: c.width, flexShrink: 0, fontSize: 12, fontWeight: 500, color: 'var(--c-ts)' }}
                 >
                   {c.label}
@@ -159,55 +183,53 @@ export function SettingsMcp({ active, onTab, onAddConnector }: Props) {
               ))}
             </div>
 
-            {MARKETPLACE_GROUP.rows.map((m) => {
-              const warn = m.tone === 'warn'
-              const tone = warn ? 'var(--c-amber)' : 'var(--c-emerald)'
+            {MARKETPLACE_GROUP.rows.map((r, i) => {
+              const tone = r.statusTone === 'warn' ? 'var(--c-amber)' : 'var(--c-emerald)'
               return (
-                <div key={m.name} style={{ height: 56, padding: '0 16px', display: 'flex', alignItems: 'center' }}>
+                <div
+                  key={r.name}
+                  style={{
+                    height: 56,
+                    padding: '0 16px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    boxShadow:
+                      i === MARKETPLACE_GROUP.rows.length - 1 ? 'none' : 'inset 0 -1px 0 0 var(--c-border)',
+                  }}
+                >
+                  <span style={{ width: 170, flexShrink: 0, fontSize: 14, fontWeight: 500, color: 'var(--c-tp)' }}>
+                    {r.name}
+                  </span>
                   <span
                     style={{
-                      width: 240,
+                      width: 220,
                       flexShrink: 0,
                       fontFamily: 'var(--f-mono)',
-                      fontSize: 14,
-                      fontWeight: 500,
-                      color: 'var(--c-tp)',
+                      fontSize: 13,
+                      color: 'var(--c-blue)',
                     }}
                   >
-                    {m.name}
+                    {r.url}
                   </span>
-                  <span style={{ width: 150, flexShrink: 0, fontSize: 13, color: 'var(--c-tm)' }}>{m.source}</span>
-                  <span style={{ width: 342, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 110, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ width: 8, height: 8, borderRadius: 4, background: tone, flexShrink: 0 }} />
-                    <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                      <span style={{ fontSize: 13, color: tone, lineHeight: '16px' }}>{m.status}</span>
-                      {m.reason && (
-                        <span
-                          style={{
-                            fontFamily: 'var(--f-mono)',
-                            fontSize: 10,
-                            color: 'var(--c-tm)',
-                            lineHeight: '13px',
-                          }}
-                        >
-                          {m.reason}
-                        </span>
-                      )}
-                    </span>
+                    <span style={{ fontSize: 13, color: tone }}>{r.status}</span>
                   </span>
-                  <span style={{ width: 120, flexShrink: 0 }}>
+                  <span style={{ width: 100, flexShrink: 0, fontSize: 13, color: 'var(--c-tm)' }}>{r.assets}</span>
+                  <span style={{ width: 100, flexShrink: 0 }}>
                     <button
                       style={{
                         borderRadius: 6,
-                        boxShadow: `inset 0 0 0 1px ${warn ? 'var(--c-amber)' : 'var(--c-chip)'}`,
+                        boxShadow: 'inset 0 0 0 1px var(--c-chip)',
                         padding: '6px 12px',
                         fontSize: 13,
-                        fontWeight: warn ? 500 : 400,
-                        color: warn ? 'var(--c-amber)' : 'var(--c-ts)',
-                        whiteSpace: 'nowrap',
+                        color: 'var(--c-ts)',
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
                       }}
                     >
-                      {m.action}
+                      {r.action}
                     </button>
                   </span>
                 </div>

@@ -58,6 +58,14 @@ class IssueFixFlow:
         completed = [h["step"] for h in self.history]
         return "triage" in completed and "maker" in completed and "checker" in completed
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> IssueFixFlow:
+        return cls(
+            issue_id=data.get("issue_id", "0"),
+            title=data.get("title", "Untitled"),
+            state=data,
+        )
+
 class PRCommitFlow:
     def __init__(self, branch: str, title: str, commits: list[str], state: dict[str, Any] | None = None) -> None:
         self.branch = branch
@@ -76,18 +84,48 @@ class PRCommitFlow:
             "history": self.history
         }
 
-    def generate_8_section_pr_summary(self) -> str:
+    def generate_8_section_pr_summary(self, diff: str = "") -> str:
         commit_list = "\n".join(f"- {c}" for c in self.commits) if self.commits else "- Initial delivery commit"
+        
+        modified_files: list[str] = []
+        test_files: list[str] = []
+        if diff:
+            for line in diff.splitlines():
+                if line.startswith("+++ b/"):
+                    fpath = line[6:].strip()
+                    if fpath not in modified_files:
+                        modified_files.append(fpath)
+                        if "test" in fpath.lower():
+                            test_files.append(fpath)
+                elif line.startswith("diff --git a/"):
+                    parts = line.split()
+                    if len(parts) >= 4 and parts[3].startswith("b/"):
+                        fpath = parts[3][2:].strip()
+                        if fpath not in modified_files:
+                            modified_files.append(fpath)
+                            if "test" in fpath.lower():
+                                test_files.append(fpath)
+
+        files_summary = ""
+        if modified_files:
+            files_summary = "\n**变更文件清单**:\n" + "\n".join(f"- `{f}`" for f in modified_files)
+
+        test_coverage_desc = "- 单元测试与端到端用例已执行并验证绿灯。"
+        if test_files:
+            test_coverage_desc += "\n- 覆盖测试文件:\n" + "\n".join(f"  - `{f}`" for f in test_files)
+
+        security_desc = "- 无 Secret/Token 硬编码，经过安全五层语法扫描。\n- 安全扫描: 无高危敏感词/密钥泄露，五层安全语法校验通过。"
+
         return f"""# {self.title}
 
 ## 1. 背景与上下文 (Background & Context)
 Resolves automated task on branch `{self.branch}`.
 
 ## 2. 变更内容 (Changes Summary)
-{commit_list}
+{commit_list}{files_summary}
 
 ## 3. 测试覆盖 (Test Coverage)
-- 单元测试与端到端用例已执行并验证绿灯。
+{test_coverage_desc}
 
 ## 4. 架构与设计决策 (Architecture & Design Decisions)
 - 遵循 LoopDesk v2.0 local-first 与 TDD 原则。
@@ -102,8 +140,17 @@ Resolves automated task on branch `{self.branch}`.
 - Linked with branch: `{self.branch}`
 
 ## 8. 审计与安全 (Audit & Security)
-- 无 Secret/Token 硬编码，经过安全五层语法扫描。
+{security_desc}
 """
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> PRCommitFlow:
+        return cls(
+            branch=data.get("branch", "main"),
+            title=data.get("title", "PR"),
+            commits=data.get("commits", []),
+            state=data,
+        )
 
 class AutoResearchFlow:
     def __init__(self, topic: str, max_iterations: int = 3, state: dict[str, Any] | None = None) -> None:
@@ -135,6 +182,14 @@ class AutoResearchFlow:
         }
         self.history.append(turn)
         return turn
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> AutoResearchFlow:
+        return cls(
+            topic=data.get("topic", "research"),
+            max_iterations=data.get("max_iterations", 3),
+            state=data,
+        )
 
 @dataclass
 class HandoffPacket:

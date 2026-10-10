@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, List, Optional
+import json
 import yaml
 from loopdesk.assets.models import AssetMetadata, AssetType
 
@@ -93,6 +94,73 @@ class AssetRegistry:
                     type=AssetType.SPEC,
                     content=content,
                     roles=roles
+                )
+                self.add(asset)
+                found.append(asset)
+
+        # Scan skills
+        skills_dir = self.root_dir / "skills"
+        if skills_dir.exists():
+            for p in sorted(skills_dir.glob("*.md")) + sorted(skills_dir.glob("*.yaml")):
+                content = p.read_text(encoding="utf-8", errors="replace")
+                asset_id = p.stem
+                asset_name = p.stem.replace("-", " ").title()
+                roles = ["maker", "checker"]
+                if content.startswith("---"):
+                    parts = content.split("---")
+                    if len(parts) >= 3:
+                        try:
+                            meta = yaml.safe_load(parts[1]) or {}
+                            if isinstance(meta, dict):
+                                asset_id = meta.get("id", asset_id)
+                                asset_name = meta.get("name", asset_name)
+                                roles = meta.get("roles", roles)
+                        except Exception:
+                            pass
+                asset = AssetMetadata(
+                    id=asset_id,
+                    name=asset_name,
+                    type=AssetType.SKILL,
+                    content=content,
+                    roles=roles,
+                )
+                self.add(asset)
+                found.append(asset)
+
+        # Scan mcp configs
+        mcp_dir = self.root_dir / "mcp"
+        if mcp_dir.exists():
+            for p in sorted(mcp_dir.glob("*.json")) + sorted(mcp_dir.glob("*.md")):
+                content = p.read_text(encoding="utf-8", errors="replace")
+                asset_id = p.stem
+                asset_name = p.stem.replace("-", " ").title()
+                roles = ["backend", "maker"]
+                if p.suffix == ".json":
+                    try:
+                        meta = json.loads(content)
+                        if isinstance(meta, dict):
+                            asset_id = meta.get("id", asset_id)
+                            asset_name = meta.get("name", asset_name)
+                            roles = meta.get("roles", roles)
+                    except Exception:
+                        pass
+                elif content.startswith("---"):
+                    parts = content.split("---")
+                    if len(parts) >= 3:
+                        try:
+                            meta = yaml.safe_load(parts[1]) or {}
+                            if isinstance(meta, dict):
+                                asset_id = meta.get("id", asset_id)
+                                asset_name = meta.get("name", asset_name)
+                                roles = meta.get("roles", roles)
+                        except Exception:
+                            pass
+                asset = AssetMetadata(
+                    id=asset_id,
+                    name=asset_name,
+                    type=AssetType.MCP,
+                    content=content,
+                    roles=roles,
                 )
                 self.add(asset)
                 found.append(asset)

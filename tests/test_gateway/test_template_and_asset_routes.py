@@ -52,6 +52,41 @@ def test_templates_routes(client: TestClient):
     assert step_data["record"]["step"] == "triage"
 
 
+def test_template_flow_state_persists_to_disk_and_restores(client: TestClient, tmp_path: Path):
+    import loopdesk.gateway.templates_assets as ta
+
+    # 1. First step
+    res1 = client.post(f"/api/v1/templates/step?root={tmp_path}", json={
+        "template_id": "issue-fix",
+        "issue_id": "99",
+        "title": "Fix memory crash",
+        "role": "triage",
+        "output": "Analyzed root cause",
+    })
+    assert res1.status_code == 200
+    assert res1.json()["record"]["step"] == "triage"
+    assert res1.json()["current_step_idx"] == 1
+
+    # Verify flow state file written to disk
+    flow_file = tmp_path / ".loopdesk" / "flows" / "issue-fix_99.json"
+    assert flow_file.exists()
+
+    # 2. Simulate process restart / memory cache wipe
+    ta._ACTIVE_FLOW_STATES.clear()
+
+    # 3. Second step must reload from disk rather than resetting to triage (step 0)
+    res2 = client.post(f"/api/v1/templates/step?root={tmp_path}", json={
+        "template_id": "issue-fix",
+        "issue_id": "99",
+        "title": "Fix memory crash",
+        "role": "maker",
+        "output": "Patched buffer allocation",
+    })
+    assert res2.status_code == 200
+    assert res2.json()["record"]["step"] == "maker"
+    assert res2.json()["current_step_idx"] == 2
+
+
 def test_assets_routes(client: TestClient, tmp_path: Path):
     repo_dir = tmp_path / "repo"
     repo_dir.mkdir()
@@ -85,3 +120,35 @@ def test_assets_routes(client: TestClient, tmp_path: Path):
     print("STATUS:", res.status_code, "BODY:", res.text)
     assert res.status_code == 200
     assert (target_project / ".loopdesk" / "rules" / "coding-standard.md").exists()
+
+
+def test_execute_template_step_evaluates_stop_conditions(client: TestClient, tmp_path: Path):
+    res = client.post(f"/api/v1/templates/step?root={tmp_path}", json={
+        "template_id": "auto-research",
+        "topic": "compression-rate",
+        "notes": "Optimal ratio reached",
+        "score": 0.95,
+        "max_iterations": 1,
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["ok"] is True
+    stop_eval = data.get("stop_conditions")
+    assert stop_eval is not None
+    assert stop_eval["all_conditions_met"] is True
+    assert stop_eval["condition_results"]["score >= 0.85"] is True
+
+
+def test_evaluate_template_stop_conditions_endpoint(client: TestClient):
+    res = client.post("/api/v1/templates/issue-fix/stop-conditions", json={
+        "context": {
+            "tests_pass": True,
+            "no_regression": True,
+            "review_gate_approved": True,
+        }
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["ok"] is True
+    assert data["all_conditions_met"] is True
+    assert data["condition_results"]["tests_pass == True"] is True

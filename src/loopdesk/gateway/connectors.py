@@ -6,6 +6,16 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from loopdesk.connectors.task_source import JiraRestAdapter, PlaneRestAdapter
 from loopdesk.connectors.knowledge_source import ConfluenceRestAdapter
+from loopdesk.connectors.mcp_manager import MCPConnectorManager, MCPCallTracer, MCPServerState
+
+_mcp_manager = MCPConnectorManager()
+_mcp_tracer = MCPCallTracer()
+
+def get_mcp_manager() -> MCPConnectorManager:
+    return _mcp_manager
+
+def get_mcp_tracer() -> MCPCallTracer:
+    return _mcp_tracer
 
 def _extract_token(request: Request) -> str:
     """Extract token securely from Authorization or custom connector header."""
@@ -76,7 +86,54 @@ async def api_fetch_confluence_doc(request: Request) -> JSONResponse:
     content = adapter.fetch_doc(doc_id)
     return JSONResponse({"ok": True, "doc_id": doc_id, "content": content})
 
+async def api_register_mcp_server(request: Request) -> JSONResponse:
+    body = await request.json()
+    name = body.get("name")
+    command = body.get("command")
+    args = body.get("args", [])
+    if not name or not command:
+        return JSONResponse({"error": "name and command are required", "code": "BAD_REQUEST"}, status_code=400)
+    _mcp_manager.register_server(name, command, args)
+    started = _mcp_manager.start_server(name)
+    state = _mcp_manager.get_server_state(name)
+    return JSONResponse({"ok": True, "name": name, "started": started, "state": state.value})
+
+async def api_get_mcp_server_status(request: Request) -> JSONResponse:
+    name = request.path_params.get("name", "")
+    state = _mcp_manager.get_server_state(name)
+    return JSONResponse({"ok": True, "name": name, "state": state.value})
+
+async def api_stop_mcp_server(request: Request) -> JSONResponse:
+    name = request.path_params.get("name", "")
+    _mcp_manager.stop_server(name)
+    state = _mcp_manager.get_server_state(name)
+    return JSONResponse({"ok": True, "name": name, "state": state.value})
+
+async def api_record_mcp_trace(request: Request) -> JSONResponse:
+    name = request.path_params.get("name", "")
+    body = await request.json()
+    trace_id = _mcp_tracer.record_call(
+        server_name=name,
+        tool_name=body.get("tool_name", "unknown"),
+        params=body.get("params", {}),
+        duration_ms=body.get("duration_ms", 0),
+        token_cost=body.get("token_cost", 0),
+    )
+    return JSONResponse({"ok": True, "trace_id": trace_id})
+
+async def api_get_mcp_traces(request: Request) -> JSONResponse:
+    name = request.path_params.get("name", "")
+    traces = _mcp_tracer.get_traces_for_server(name)
+    return JSONResponse({"ok": True, "name": name, "traces": traces})
+
 def register_connector_routes(app: Any) -> None:
     from starlette.routing import Route
     app.routes.append(Route("/api/v1/connectors/tasks", api_fetch_remote_task, methods=["GET"]))
     app.routes.append(Route("/api/v1/connectors/knowledge", api_fetch_confluence_doc, methods=["GET"]))
+    app.routes.extend([
+        Route("/api/v1/connectors/mcp/register", api_register_mcp_server, methods=["POST"]),
+        Route("/api/v1/connectors/mcp/{name}/status", api_get_mcp_server_status, methods=["GET"]),
+        Route("/api/v1/connectors/mcp/{name}/stop", api_stop_mcp_server, methods=["POST"]),
+        Route("/api/v1/connectors/mcp/{name}/trace", api_record_mcp_trace, methods=["POST"]),
+        Route("/api/v1/connectors/mcp/{name}/traces", api_get_mcp_traces, methods=["GET"]),
+    ])

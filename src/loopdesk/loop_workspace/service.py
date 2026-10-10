@@ -32,7 +32,9 @@ def _gate_status_for(status: str) -> str:
         return "blocked"
     if status == "in_review":
         return "pending"
-    return "passed"
+    if status == "completed":
+        return "passed"
+    return "not_evaluated"
 
 
 class LoopWorkspaceService:
@@ -168,7 +170,10 @@ class LoopWorkspaceService:
             entry["template"] = template
             entry["status"] = status
             entry["phase"] = phase or entry.get("phase") or "triage"
-            entry["gate_status"] = _gate_status_for(status)
+            if "receipt_digest" in entry and entry.get("gate_status") == "passed":
+                pass
+            else:
+                entry["gate_status"] = _gate_status_for(status)
             if intent is not None:
                 entry["intent"] = intent
             if project_id is not None:

@@ -1,18 +1,12 @@
+import { useState, useEffect } from 'react'
 import { listMarketplaceAssets, distributeAsset } from "../lib/api";
-import { useState } from 'react'
 import { TopBar } from '../components/TopBar'
 import { ConversationDock } from '../components/ConversationDock'
 import { CloseIcon, FolderIcon, LockIcon, SearchIcon } from '../components/icons'
 import { ASSETS, ASSET_TABS, ASSET_KIND_STYLE, ASSET_PREVIEW, SKILL_SCOPE_BAR, type AssetCard, type AssetKind } from '../data'
 
-/* ============================================================
-   Screen 2 — 团队资产 (read-only asset market)
-   Header 24px title, 30px filter row, 250px cards in a 16px gutter
-   rail that scrolls horizontally. Preview panel uses the #10141C well.
-   ============================================================ */
-
 function Badge({ kind, height = 20 }: { kind: AssetKind; height?: number }) {
-  const s = ASSET_KIND_STYLE[kind]
+  const s = ASSET_KIND_STYLE[kind] || ASSET_KIND_STYLE.rule
   return (
     <span
       style={{
@@ -34,9 +28,10 @@ function Badge({ kind, height = 20 }: { kind: AssetKind; height?: number }) {
   )
 }
 
-function AssetTile({ a }: { a: AssetCard }) {
+function AssetTile({ a, onClick }: { a: AssetCard; onClick: () => void }) {
   return (
     <div
+      onClick={onClick}
       style={{
         width: 250,
         height: a.height,
@@ -78,8 +73,6 @@ function AssetTile({ a }: { a: AssetCard }) {
   )
 }
 
-/** 作用域 + 健康条 —— 资产是按运行时作用域投递的，作用域标记缺失
- *  会让技能直接 blocked，必须放在列表上方而不是藏在详情里。 */
 function ScopeHealthBar() {
   return (
     <div
@@ -101,8 +94,22 @@ function ScopeHealthBar() {
   )
 }
 
-function Preview() {
-  const p = ASSET_PREVIEW
+interface PreviewProps {
+  asset: AssetCard | null
+  onClose: () => void
+  onDistribute: () => void
+  distributeStatus: string | null
+}
+
+function Preview({ asset, onClose, onDistribute, distributeStatus }: PreviewProps) {
+  const p = asset || ASSET_PREVIEW
+  const codeLines = 'code' in p && Array.isArray((p as any).code) ? (p as any).code : [
+    `// ${p.name}`,
+    `version = "${p.version}"`,
+    `scope = "team"`,
+    `# auto-generated asset definition`,
+  ]
+
   return (
     <aside
       style={{
@@ -128,7 +135,12 @@ function Preview() {
       >
         <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-tp)' }}>资产预览</span>
         <div style={{ flex: 1 }} />
-        <CloseIcon size={16} style={{ color: 'var(--c-tm)', cursor: 'pointer' }} />
+        <button
+          onClick={onClose}
+          style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+        >
+          <CloseIcon size={16} style={{ color: 'var(--c-tm)' }} />
+        </button>
       </div>
 
       <div
@@ -165,7 +177,7 @@ function Preview() {
               gap: 6,
             }}
           >
-            {p.code.map((line) => (
+            {codeLines.map((line: string) => (
               <div
                 key={line}
                 style={{
@@ -196,22 +208,29 @@ function Preview() {
           }}
         >
           <LockIcon size={14} style={{ color: 'var(--c-amber)' }} />
-          <span style={{ fontSize: 12, color: 'var(--c-amber)' }}>{p.notice}</span>
+          <span style={{ fontSize: 12, color: 'var(--c-amber)' }}>
+            {'notice' in p ? (p as any).notice : '只读资产：受项目主干版本锁定'}
+          </span>
         </div>
 
-        <div
+        <button
+          onClick={onDistribute}
           style={{
             height: 36,
             borderRadius: 8,
-            background: '#1b202b',
+            background: distributeStatus === '下发成功' ? 'var(--c-emerald)' : '#1b202b',
+            border: 'none',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            cursor: 'pointer',
             flexShrink: 0,
           }}
         >
-          <span style={{ fontSize: 12, color: 'var(--c-tm)', lineHeight: '15px' }}>{p.action}</span>
-        </div>
+          <span style={{ fontSize: 12, color: distributeStatus === '下发成功' ? '#000' : 'var(--c-tp)', lineHeight: '15px' }}>
+            {distributeStatus || ('action' in p ? (p as any).action : '一键下发至项目')}
+          </span>
+        </button>
       </div>
     </aside>
   )
@@ -219,6 +238,68 @@ function Preview() {
 
 export function TeamAssets() {
   const [tab, setTab] = useState<string>(ASSET_TABS[0])
+  const [searchQuery, setSearchQuery] = useState<string>('')
+  const [selectedAsset, setSelectedAsset] = useState<AssetCard | null>(ASSETS[0])
+  const [showPreview, setShowPreview] = useState<boolean>(true)
+  const [distributeStatus, setDistributeStatus] = useState<string | null>(null)
+  const [assetList, setAssetList] = useState<AssetCard[]>(ASSETS)
+
+  useEffect(() => {
+    let active = true
+    async function load() {
+      try {
+        const res = await listMarketplaceAssets()
+        if (active && res && Array.isArray(res.assets) && res.assets.length > 0) {
+          const mapped: AssetCard[] = res.assets.map((item: any, idx: number) => ({
+            id: item.id || `api-${idx}`,
+            kind: (item.type || 'rule').toLowerCase() as AssetKind,
+            name: item.name || item.id,
+            desc: item.description || '由团队注册中心分发的标准化资产',
+            version: item.version || 'v1.0.0',
+            usage: '100% 规则合规',
+            height: 180,
+          }))
+          setAssetList([...ASSETS, ...mapped])
+        }
+      } catch {
+        // fallback to default assets
+      }
+    }
+    load()
+    return () => { active = false }
+  }, [])
+
+  const handleDistribute = async () => {
+    if (!selectedAsset) return
+    try {
+      setDistributeStatus('正在下发...')
+      await distributeAsset({
+        id: selectedAsset.id,
+        name: selectedAsset.name,
+        type: selectedAsset.kind,
+        content: `# ${selectedAsset.name}\n`,
+      })
+      setDistributeStatus('下发成功')
+      setTimeout(() => setDistributeStatus(null), 2500)
+    } catch {
+      setDistributeStatus('下发失败')
+      setTimeout(() => setDistributeStatus(null), 2500)
+    }
+  }
+
+  const filteredAssets = assetList.filter((a) => {
+    const matchTab =
+      tab === '全部' ||
+      (tab === 'Rules' && a.kind === 'rule') ||
+      (tab === 'Commands' && a.kind === 'cmd') ||
+      (tab === 'Skills' && a.kind === 'skill') ||
+      (tab === 'MCP' && a.kind === 'mcp')
+    const matchSearch =
+      !searchQuery ||
+      a.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      a.desc.toLowerCase().includes(searchQuery.toLowerCase())
+    return matchTab && matchSearch
+  })
 
   return (
     <>
@@ -262,6 +343,8 @@ export function TeamAssets() {
                     fontWeight: on ? 500 : 400,
                     color: on ? 'var(--c-emerald)' : 'var(--c-ts)',
                     whiteSpace: 'nowrap',
+                    border: 'none',
+                    cursor: 'pointer',
                   }}
                 >
                   {t}
@@ -303,14 +386,25 @@ export function TeamAssets() {
               }}
             >
               <SearchIcon size={14} style={{ color: 'var(--c-tm)' }} />
-              <span style={{ fontSize: 12, color: 'var(--c-tm)' }}>搜索资产…</span>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="搜索资产…"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  fontSize: 12,
+                  color: 'var(--c-tp)',
+                  width: '100%',
+                }}
+              />
             </div>
           </div>
 
-          {/* scope + health — sits directly under the filter bar */}
           <ScopeHealthBar />
 
-          {/* asset grid — wraps 3 per row inside the 800px content well */}
           <div
             style={{
               display: 'flex',
@@ -321,8 +415,15 @@ export function TeamAssets() {
               flexShrink: 0,
             }}
           >
-            {ASSETS.map((a) => (
-              <AssetTile key={a.id} a={a} />
+            {filteredAssets.map((a) => (
+              <AssetTile
+                key={a.id}
+                a={a}
+                onClick={() => {
+                  setSelectedAsset(a)
+                  setShowPreview(true)
+                }}
+              />
             ))}
           </div>
         </div>
@@ -330,7 +431,14 @@ export function TeamAssets() {
         <ConversationDock />
       </div>
 
-      <Preview />
+      {showPreview && (
+        <Preview
+          asset={selectedAsset}
+          onClose={() => setShowPreview(false)}
+          onDistribute={handleDistribute}
+          distributeStatus={distributeStatus}
+        />
+      )}
     </>
   )
 }

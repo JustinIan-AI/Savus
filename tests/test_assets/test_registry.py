@@ -67,3 +67,35 @@ def test_asset_registry_scan_and_filter(tmp_path: Path):
     assert len(registry.filter(role="backend")) == 2
     # Filter by tag
     assert len(registry.filter(tag="review")) == 1
+
+
+def test_asset_registry_discover_all_types(tmp_path: Path):
+    # 1. rules/
+    rules_dir = tmp_path / "rules"
+    rules_dir.mkdir()
+    (rules_dir / "clean-code.md").write_text("---\nid: clean-code\nname: Clean Code\ntype: rule\nroles: [maker]\n---\nKeep it simple.")
+
+    # 2. specs/
+    specs_dir = tmp_path / "specs"
+    specs_dir.mkdir()
+    (specs_dir / "api-v1.md").write_text("---\nid: api-v1\nname: API Spec v1\ntype: spec\nroles: [maker]\n---\nEndpoints spec.")
+
+    # 3. skills/
+    skills_dir = tmp_path / "skills"
+    skills_dir.mkdir()
+    (skills_dir / "tdd-guide.md").write_text("---\nid: tdd-guide\nname: TDD Guide\ntype: skill\nroles: [maker, checker]\n---\nTDD flow.")
+
+    # 4. mcp/
+    mcp_dir = tmp_path / "mcp"
+    mcp_dir.mkdir()
+    (mcp_dir / "jira.json").write_text("{\"id\": \"jira-mcp\", \"name\": \"Jira MCP\", \"type\": \"mcp\", \"roles\": [\"backend\"]}")
+
+    registry = AssetRegistry(root_dir=tmp_path)
+    discovered = registry.discover()
+
+    discovered_types = {a.type for a in discovered}
+    assert AssetType.RULE in discovered_types
+    assert AssetType.SPEC in discovered_types
+    assert AssetType.SKILL in discovered_types
+    assert AssetType.MCP in discovered_types
+    assert len(discovered) == 4

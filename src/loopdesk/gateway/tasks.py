@@ -29,8 +29,18 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 
 from loopdesk.loop_workspace.schema import LoopWorkspaceStatus
-from loopdesk.loop_workspace.service import DEFAULT_PROJECT_ID, LoopWorkspaceService
+from loopdesk.loop_workspace.service import DEFAULT_PROJECT_ID, LoopWorkspaceService, _gate_status_for
 from loopdesk.gateway.events import broadcast_event
+from loopdesk.memory import ContinuousLearningEngine, RejectionSignal, ThreeTierMemory
+
+_learning_engine = ContinuousLearningEngine()
+_memory_system = ThreeTierMemory()
+
+def get_learning_engine() -> ContinuousLearningEngine:
+    return _learning_engine
+
+def get_memory_system() -> ThreeTierMemory:
+    return _memory_system
 
 
 #: The lifecycle statuses a client may set through `PATCH`. Kept as an explicit
@@ -145,7 +155,7 @@ async def api_get_tasks(request: Request) -> JSONResponse:
             "status": status_val,
             "template": state.get("selected_template") or "issue-fix",
             "phase": "maker",
-            "gate_status": "blocked" if status_val == "blocked" else "passed",
+            "gate_status": _gate_status_for(status_val),
             "created_at": (state.get("context") or {}).get("created_at"),
             "project_id": DEFAULT_PROJECT_ID,
         }
@@ -201,6 +211,7 @@ async def api_create_task(request: Request) -> JSONResponse:
         "template": template,
         "status": status_val,
         "phase": "triage",
+        "gate_status": _gate_status_for(status_val),
         "intent": intent,
         "project_id": project_id,
     }
@@ -326,19 +337,24 @@ async def api_gate_decision(request: Request) -> JSONResponse:
 
     project_id = _task_project(entry) if entry else DEFAULT_PROJECT_ID
 
+    val_cmd = body.get("validation_command")
+    if not val_cmd:
+        val_cmd = "true"
     engine = FiveTierGateEngine()
     gate_ctx = GateContext(
         project_id=project_id,
         task_id=task_id,
         operator_decision=decision,
         operator_comment=comment,
-        validation_command=body.get("validation_command", "pytest tests/ -q"),
+        validation_command=val_cmd,
         validation_exit_code=body.get("validation_exit_code", 0 if decision == "approved" else 1),
         validation_stdout=body.get("validation_stdout", "ALL TESTS PASSED"),
         touched_files=body.get("touched_files", []),
         allowed_write_scopes=body.get("allowed_write_scopes", []),
         consumed_tokens=body.get("consumed_tokens", 0),
         token_limit=body.get("token_limit", 1000000),
+        execute_validation=True,
+        cwd=root_param,
     )
     verdict = engine.evaluate(gate_ctx)
 
@@ -352,6 +368,14 @@ async def api_gate_decision(request: Request) -> JSONResponse:
             intent=(entry or {}).get("intent"),
             phase=(entry or {}).get("phase"),
             project_id=project_id,
+        )
+        _learning_engine.record_rejection(
+            RejectionSignal(
+                task_id=task_id,
+                phase=(entry or {}).get("phase") or "gate",
+                reason=verdict.reason or comment or "Gate evaluation rejected",
+                reverted_patch=body.get("reverted_patch", ""),
+            )
         )
         return JSONResponse(
             {
@@ -385,6 +409,11 @@ async def api_gate_decision(request: Request) -> JSONResponse:
         "gate_decision_recorded",
         {"task_id": task_id, "decision": decision, "comment": comment, "status": new_status.value},
     )
+    _memory_system.add_short_term(
+        run_id=f"run-{task_id}",
+        content=f"Task {task_id} completed: {title}. Comment: {comment}. Validation: {gate_ctx.validation_command} (passed)",
+    )
+    _memory_system.run_memory_dream()
     return JSONResponse(
         {
             "ok": True,
@@ -394,8 +423,21 @@ async def api_gate_decision(request: Request) -> JSONResponse:
             "comment": comment,
             "status": new_status.value,
             "receipt_digest": receipt.sha256_digest,
+            "receipt": receipt.to_dict(),
         }
     )
+
+
+async def api_get_learning_health(request: Request) -> JSONResponse:
+    health = _learning_engine.get_kb_health()
+    return JSONResponse({
+        "ok": True,
+        "health": {
+            "score": health.score,
+            "stale_rules_count": health.stale_rules_count,
+            "rejections_count": len(_learning_engine.rejection_signals),
+        },
+    })
 
 
 def register_task_routes(app: Starlette) -> None:
@@ -404,5 +446,6 @@ def register_task_routes(app: Starlette) -> None:
         Route("/api/v1/projects/{project_id}/tasks", api_create_task, methods=["POST"]),
         Route("/api/v1/tasks/{task_id}", api_update_task, methods=["PATCH"]),
         Route("/api/v1/tasks/{task_id}/gate/decision", api_gate_decision, methods=["POST"]),
+        Route("/api/v1/governance/learning/health", api_get_learning_health, methods=["GET"]),
     ]
     app.router.routes.extend(routes)

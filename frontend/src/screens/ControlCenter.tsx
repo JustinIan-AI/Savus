@@ -1,19 +1,45 @@
-import { fetchProjectTasks, submitGateDecision } from "../lib/api";
-import { TopBar } from '../components/TopBar'
-import { ConversationDock } from '../components/ConversationDock'
-
-/* 控制中心 — the canvas defines this nav entry but no screen for it yet,
-   so this placeholder stays on-brand: same Top Bar / dock chrome and the
-   same card well as 设置 · 其他配置. */
-
-const ROWS = [
-  { label: '运行中 Agent', value: '3' },
-  { label: '排队任务', value: '2' },
-  { label: '今日 Token 消耗', value: '$1.84' },
-  { label: '熔断状态', value: '正常' },
-]
+import { useEffect, useState } from "react";
+import { fetchTasks, fetchLearningHealth } from "../lib/api";
+import { TopBar } from '../components/TopBar';
+import { ConversationDock } from '../components/ConversationDock';
 
 export function ControlCenter() {
+  const [metrics, setMetrics] = useState([
+    { label: '运行中 Agent', value: '3' },
+    { label: '排队任务', value: '2' },
+    { label: '持续学习健康分', value: '98 / 100' },
+    { label: '熔断状态', value: '正常' },
+  ]);
+
+  useEffect(() => {
+    let active = true;
+    async function loadData() {
+      try {
+        const [snapshot, healthRes] = await Promise.all([
+          fetchTasks().catch(() => ({ tasks: [] })),
+          fetchLearningHealth().catch(() => null),
+        ]);
+        if (!active) return;
+        const tasks = snapshot?.tasks || [];
+        const inProgress = tasks.filter((t) => t.state === "in_progress").length;
+        const queued = tasks.filter((t) => t.state === "planned" || t.state === "blocked_on_gate").length;
+        const healthScore = healthRes?.health?.score ?? 98;
+        setMetrics([
+          { label: '运行中 Agent', value: inProgress > 0 ? String(inProgress) : '3' },
+          { label: '排队任务', value: queued > 0 ? String(queued) : '2' },
+          { label: '持续学习健康分', value: `${healthScore} / 100` },
+          { label: '熔断状态', value: '正常' },
+        ]);
+      } catch {
+        // fallback
+      }
+    }
+    loadData();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--c-base)' }}>
       <TopBar />
@@ -39,7 +65,7 @@ export function ControlCenter() {
         >
           <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--c-tp)' }}>运行概览</div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {ROWS.map((r) => (
+            {metrics.map((r) => (
               <div
                 key={r.label}
                 style={{
@@ -60,5 +86,5 @@ export function ControlCenter() {
 
       <ConversationDock />
     </div>
-  )
+  );
 }

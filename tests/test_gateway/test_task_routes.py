@@ -175,3 +175,96 @@ def test_gate_decision_rejects_unverified_receipt(test_client: TestClient, tmp_p
     assert data["ok"] is False
     assert data["failed_gate"] == "evidence"
     assert "Evidence Gate failed" in data["error"]
+
+
+def test_gate_decision_runs_real_validation_command_and_rejects_failing_command(test_client: TestClient, tmp_path: Path):
+    response = test_client.post(
+        f"/api/v1/tasks/task-failing-cmd/gate/decision?root={tmp_path}",
+        json={
+            "decision": "approved",
+            "comment": "trying to fake zero exit code in payload",
+            "validation_command": "python3 -c \"import sys; sys.exit(1)\"",
+            "validation_exit_code": 0,
+        },
+    )
+    assert response.status_code == 422
+    data = response.json()
+    assert data["ok"] is False
+    assert data["failed_gate"] == "evidence"
+    assert "exit code 1" in data["error"]
+
+
+def test_gate_decision_executes_successful_validation_command_and_records_real_stdout_hash(test_client: TestClient, tmp_path: Path):
+    import hashlib
+    response = test_client.post(
+        f"/api/v1/tasks/task-success-cmd/gate/decision?root={tmp_path}",
+        json={
+            "decision": "approved",
+            "comment": "legitimate test run",
+            "validation_command": "python3 -c \"print(\x27REAL_VERIFIED_OUTPUT\x27)\"",
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["ok"] is True
+    receipt = data["receipt"]
+    assert receipt["exit_code"] == 0
+    expected_hash = hashlib.sha256(b"REAL_VERIFIED_OUTPUT\n").hexdigest()
+    assert receipt["stdout_hash"] == expected_hash
+
+
+def test_newly_created_task_has_gate_status_not_evaluated(test_client: TestClient, tmp_path: Path):
+    response = test_client.post(
+        f"/api/v1/projects/default/tasks?root={tmp_path}",
+        json={"title": "从未裁决的任务"},
+    )
+    assert response.status_code == 200
+    task = response.json()["task"]
+    assert task["gate_status"] == "not_evaluated"
+
+
+def test_gate_decision_wires_continuous_learning_on_rejection(test_client: TestClient, tmp_path: Path):
+    from loopdesk.gateway.tasks import get_learning_engine
+
+    engine = get_learning_engine()
+    initial_rejections = len(engine.rejection_signals)
+
+    response = test_client.post(
+        f"/api/v1/tasks/task-learn-reject/gate/decision?root={tmp_path}",
+        json={
+            "decision": "approved",
+            "comment": "failing test",
+            "validation_command": "python3 -c \"import sys; sys.exit(1)\"",
+        },
+    )
+    assert response.status_code == 422
+    assert len(engine.rejection_signals) == initial_rejections + 1
+    sig = engine.rejection_signals[-1]
+    assert sig.task_id == "task-learn-reject"
+    assert "exit code 1" in sig.reason
+
+    # Query learning health endpoint
+    health_res = test_client.get(f"/api/v1/governance/learning/health?root={tmp_path}")
+    assert health_res.status_code == 200
+    data = health_res.json()
+    assert data["ok"] is True
+    assert "score" in data["health"]
+    assert data["health"]["rejections_count"] >= 1
+
+
+def test_gate_decision_wires_three_tier_memory_dream_on_completion(test_client: TestClient, tmp_path: Path):
+    from loopdesk.gateway.tasks import get_memory_system
+
+    mem = get_memory_system()
+    initial_distilled = mem.get_long_term_count()
+
+    response = test_client.post(
+        f"/api/v1/tasks/task-memory-dream/gate/decision?root={tmp_path}",
+        json={
+            "decision": "approved",
+            "comment": "All criteria met, closing task",
+            "validation_command": "python3 -c \"print('OK')\"",
+        },
+    )
+    assert response.status_code == 200
+    assert mem.get_long_term_count() == initial_distilled + 1

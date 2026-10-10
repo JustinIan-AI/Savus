@@ -14,6 +14,9 @@ from .manager import MemoryManager, build_memory_managers
 from .meta import MemoryIndexMeta
 from .retrieval import MemoryRetriever
 from .store import LongTermMemoryStore
+from .three_tier import ThreeTierMemory, MemoryTier
+from .learning import ContinuousLearningEngine, RejectionSignal, KBHealth
+from .cross_context import ContextResolver, HandoffEnveloper
 from .sync_manager import MemorySyncManager, SessionDeltaTracker
 from .sync_manager import MemorySyncManager as MemoryFileWatcher
 from .types import (
@@ -56,4 +59,12 @@ __all__ = [
     "SILENT_REPLY_TOKEN",
     # meta
     "MemoryIndexMeta",
+    # three-tier and continuous learning
+    "ThreeTierMemory",
+    "MemoryTier",
+    "ContinuousLearningEngine",
+    "RejectionSignal",
+    "KBHealth",
+    "ContextResolver",
+    "HandoffEnveloper",
 ]
