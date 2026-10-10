@@ -211,11 +211,18 @@ export async function validateTaskCreation(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
-    if (!res.ok) return { ok: true }
+    if (!res.ok) {
+      try {
+        const data = await res.json()
+        return { ok: false, message: data.message || data.detail || ('校验失败 (' + res.status + ')') }
+      } catch {
+        return { ok: false, message: '校验服务异常 (' + res.status + ')' }
+      }
+    }
     return await res.json()
-  } catch (err) {
-    console.warn('validateTaskCreation fallback:', err)
-    return { ok: true }
+  } catch (err: any) {
+    console.warn('validateTaskCreation network error:', err)
+    return { ok: false, message: err?.message || '网络请求异常，无法连接校验服务' }
   }
 }
 

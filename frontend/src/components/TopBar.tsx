@@ -38,7 +38,7 @@ export function TopBar({
   const [projectMenuOpen, setProjectMenuOpen] = useState(false)
   
   const currentProjObj = projects.find((p) => p.id === currentProjectId)
-  const currentProjectName = currentProjObj?.name ?? 'Acme Platform'
+  const currentProjectName = currentProjObj?.name ?? '默认工作区'
 
   return (
     <header
@@ -94,9 +94,7 @@ export function TopBar({
             {(projects.length > 0
               ? projects
               : [
-                  { id: 'default', name: 'Acme Platform' },
-                  { id: 'nimbus', name: 'Nimbus CLI' },
-                  { id: 'atlas', name: 'Atlas Gateway' },
+                  { id: currentProjectId || 'default', name: currentProjectName },
                 ]
             ).map((proj) => {
               const isSelected = proj.id === currentProjectId || proj.name === currentProjectName

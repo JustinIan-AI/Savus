@@ -73,3 +73,18 @@ def test_service_context_snapshot_reads_project_context_files(tmp_path: Path) ->
     assert context_pack["context"]["project"]["stack"] == "python"
     assert context_pack["context"]["task"]["goal"] == "ship F1"
     assert (tmp_path / "LOOP-STATE.json").exists()
+
+def test_service_context_snapshot_reads_multiple_lines_in_context_files(tmp_path: Path) -> None:
+    service = LoopWorkspaceService.from_root(tmp_path)
+    service.ensure_initialized()
+    service.record_work_item("work-2", "loop", "Multi-line context snapshot.")
+    service.layout.project_context_path.write_text(
+        "stack: python\nversion: 3.12\nframework: fastapi\nis_ready: true\n",
+        encoding="utf-8",
+    )
+    context_pack = service.get_context_pack()
+    project_ctx = context_pack["context"]["project"]
+    assert project_ctx["stack"] == "python"
+    assert project_ctx["version"] == 3.12
+    assert project_ctx["framework"] == "fastapi"
+    assert project_ctx["is_ready"] is True

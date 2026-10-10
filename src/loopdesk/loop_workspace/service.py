@@ -500,7 +500,7 @@ def _load_context_file(path: Path) -> dict[str, object]:
                     payload[key] = float(value)
                 except ValueError:
                     payload[key] = value
-        return payload
+    return payload
 
 
 def _compact_context_pack(payload: dict[str, object], schema: dict[str, object]) -> dict[str, object]:
