@@ -174,7 +174,7 @@ def create_gateway_app(
         token_header = request.headers.get("x-loopdesk-token")
         if token_header:
             return token_header
-        return request.query_params.get("token")
+        return None
 
     def _make_ctx(request: Request | None = None, role_claim: str = "operator") -> RpcContext:
         from loopdesk.gateway.auth import Principal, resolve_auth
@@ -192,7 +192,7 @@ def create_gateway_app(
         )
         if principal is None:
             principal = Principal(
-                role=role_claim,
+                role="anonymous",
                 scopes=frozenset(),
                 is_owner=False,
                 authenticated=False,
